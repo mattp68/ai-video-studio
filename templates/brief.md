@@ -1,0 +1,32 @@
+# Project brief
+
+- Starting material: raw takes / already approved spoken cut / written outline
+- Deliverable type: video / carousel / presentation
+- Collaboration: Ask / Storyboard / Review / Edit / Refine
+- Visual storyboard location and review state:
+- Current status file: STATUS.md
+- Design profile / approved internal reference:
+- Project / brand:
+- Product URL and correct pronunciation:
+- Audience and one key takeaway:
+- Platform / venue: Instagram Reels / TikTok / carousel / conference / other
+- Format: 9:16 video by default; specify 3:4 carousel or presentation dimensions separately
+- Desired duration: 30–90 seconds
+- Deadline / review deadline:
+- Primary CTA:
+- Mandatory wording, claims, disclosure, shots, or logo treatment:
+- Flexible script sections:
+- Original footage filename(s):
+- Script location:
+- Supplied B-roll and what each file shows:
+- Assets still needed:
+- Brand fonts, colors, logo files, music requirements:
+- Sound direction / desired mood changes / effects to avoid:
+- Music/SFX provider and subscription plan:
+- Publishing: own channels / brand channels / paid ads or boosted posts:
+- Brand reuse, partnership ads / whitelisting, and other contracted uses:
+- Publishing channel URLs and expected first publication date:
+- Reference(s) and what to borrow:
+- Creative preferences / avoid:
+- Delivery: finished MP4 plus reusable code project
+- Notes / unresolved questions:

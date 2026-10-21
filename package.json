@@ -1,0 +1,21 @@
+{
+  "name": "ai-video-studio",
+  "version": "0.1.0-beta.1",
+  "private": true,
+  "description": "A local home for AI-assisted video edits, storyboards and creative references.",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "studio": "python3 style-library/start.py",
+    "setup": "python3 scripts/setup.py",
+    "doctor": "python3 scripts/setup.py --check",
+    "test": "python3 -m unittest discover -s style-library -p test_*.py",
+    "smoke": "python3 scripts/smoke.py"
+  },
+  "dependencies": {
+    "gsap": "3.14.2",
+    "hyperframes": "0.8.144"
+  },
+  "license": "MIT"
+}

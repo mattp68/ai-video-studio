@@ -1,0 +1,86 @@
+{
+  "version": 2,
+  "scope": "Starting defaults for new video projects; project brief/design overrides. Existing approved projects are not retrofitted. Carousel and presentation dimensions must be set separately.",
+  "context": "PROJECT_CONTEXT.md",
+  "workflow": [
+    "ask",
+    "storyboard",
+    "review",
+    "edit",
+    "refine"
+  ],
+  "design": {
+    "reference": "docs/DESIGN-SYSTEM.md",
+    "profile": "warm-graphite",
+    "background": "#191b1e",
+    "foreground": "#f3eee5",
+    "accent": "#f2734f",
+    "display_font": "Archivo Black",
+    "aside_font": "Instrument Serif",
+    "aside_style": "italic"
+  },
+  "format": {
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "target_seconds": [
+      30,
+      90
+    ]
+  },
+  "delivery": {
+    "container": "mp4",
+    "video_codec": "h264",
+    "audio_codec": "aac",
+    "audio_sample_rate": 48000,
+    "crf": 17,
+    "pixel_format": "yuv420p"
+  },
+  "review": {
+    "proxy_long_edge": 960,
+    "contact_sheet_interval_seconds": 5
+  },
+  "captions": {
+    "status": "Current showcase default; confirm fit and timing on actual footage",
+    "font": "Inter",
+    "weight": 800,
+    "case": "sentence",
+    "size_px": 46,
+    "max_lines": 1,
+    "words_per_phrase": [
+      2,
+      5
+    ],
+    "text": "#f3eee5",
+    "accent": "#f2734f",
+    "unspoken_text": "#a29f99",
+    "progression": "cumulative word-onset gray-to-ivory; spoken words stay ivory until phrase clears"
+  },
+  "safe_area": {
+    "status": "conservative starting margins; verify in current platform preview",
+    "top_px": 180,
+    "bottom_px": 340,
+    "left_px": 90,
+    "right_px": 180
+  },
+  "transcription": {
+    "engine": "mlx-whisper",
+    "model": "mlx-community/whisper-small.en-mlx",
+    "language": "en",
+    "word_timestamps": true
+  },
+  "sound_design": {
+    "creative_priority": "polish, suspense, energy, and payoff through purposeful music, effects, and silence",
+    "preferred_library": "Epidemic Sound",
+    "subscription_status": "Use your own account; verify coverage for each project.",
+    "music_default": "brief-specific; do not add automatically",
+    "sfx_preference": "Sparse physical mouse clicks, clean snaps or pops; avoid squishy, rubbery, pitched and downward digital accents",
+    "speech_priority": true,
+    "cue_timeline": "edited output",
+    "usage_coverage": "verify per account and campaign"
+  },
+  "editing": {
+    "default": "performance-led; preserve natural breaths and gestures",
+    "automatic_silence_deletion": false
+  }
+}

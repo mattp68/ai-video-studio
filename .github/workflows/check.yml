@@ -1,0 +1,19 @@
+name: Checks
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  core:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: python3 -m unittest discover -s style-library -p 'test_*.py' -q
+      - run: node --check style-library/dist/app.js && node --check style-library/dist/studio.js && node --check style-library/dist/reference-ui.js
+      - run: python3 scripts/export_release.py --name ci-source-check
+      - run: npm ci --ignore-scripts && npm audit --audit-level=high
