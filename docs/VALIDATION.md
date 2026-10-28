@@ -1,3 +1,19 @@
+# Current release validation — 0.1.0-beta.2 (2026-10-28)
+
+- 118 Python unit tests and 42 Node UI tests pass locally and in a clean source-only installation. New release regressions reject version/lock/install-tag drift and populated starter seeds. Setup regressions preserve populated owner records, raw/exported media, reference notes, feedback/links, scripts, approvals, local source and .env while creating only missing registries.
+- An exact 113-source-file preflight export passed scanning and was installed in a fresh directory on this Apple Silicon Mac with the hashed optional speech packages. First-use projects/references/techniques were empty. Full synthetic smoke produced a 2.4s audio/video assembly with its generated original unchanged and a separate 5s1080×1920 HyperFrames render. The encoded sample frame was inspected. pip check and speech/Pillow/certifi imports passed. Package/browser caches on the same machine were reused; this is not an independent-machine pilot or real speech/listening assessment.
+- Current npm and core Python audits reported no known advisories. The optional speech scan found four advisories in filelock4.0.12/setuptools84.0.0; those are patched to filelock4.2.1/setuptools84.1.0 using PyPI distribution hashes. The patched speech audit reported no known advisories, and the fresh environment installed/imported correctly. Renderer/GSAP pins are unchanged. These scoped audits are not a complete security certification.
+- Populated beta.1 → beta.2 rehearsals passed for an actual Git checkout and an extracted ZIP copy. Each retained SHA256 hashes for21 owner files covering project/index/catalog data, synthetic raw/review/reference media, an exact source-pinned technique and evidence, poster, settings, supplied/saved scripts, approvals, feedback/immutable links, borrowing notes, editor copy/session and .env. The old registries validated before/after; new readers resolved exact saved feedback/script links, earlier borrowing notes and the exact technique example.
+- A modified owner README was detected and explicitly reconciled in both rehearsals rather than discarded. Rollback restored affected application source while keeping the customization and a new owner note created after upgrading. Both original registries validated again. This tests the documented assistant procedure; it is not an automatic installer or a fresh human assistant session.
+- Release source is selected explicitly and checked against the committed Git tree. Owner projects/catalogs/media/previews/notes, credentials, environments and machine-local test evidence are excluded. Empty starter examples are checked separately from preserved installed data. Actual private/starter owner files are fingerprinted independently of disposable test fixtures.
+- GitHub checks cover Python3.11/3.13 on Linux/macOS, all Node UI tests, JS syntax, source-tree/version/export checks and npm/core/speech dependency audits. Workflow actions are pinned by commit. Passing core checks is not a full media workflow claim for those platforms. The final release notes identify the exact successful CI commit.
+
+Still beta: a teammate's real upgrade prompt, fresh Codex/Claude Code sessions, real transcription/take-selection/listening and other-platform full-media workflows need the independent pilot in docs/PILOT.md. The beta.1 installation has no Updates page, so docs/UPDATING.md supplies a direct prompt for that first upgrade. No owner creative project was changed, rendered, approved or published by release QA.
+
+The historical records below retain their original scope; they do not supersede the current release/version above.
+
+---
+
 # Validation — 2026-10-21 local candidate
 
 Verified on Apple Silicon macOS with Python 3.13, Node 23 and FFmpeg 9. HyperFrames stays pinned at 0.8.144. The private working studio was not upgraded.
