@@ -106,6 +106,15 @@ class ProjectsTest(unittest.TestCase):
         self.assertEqual(self.request('/project-files/demo/1', Range='bytes=12-')[0], 416)
         self.assertTrue(self.request('/project-files/demo/0')[1]['Content-Type'].startswith('text/plain'))
 
+    def test_stable_asset_link_survives_inserting_a_new_version(self):
+        url = index.public_index()['projects'][0]['artifacts'][0]['url']
+        (self.project / 'new.mp4').write_bytes(b'new version')
+        self.record['artifacts'].insert(0, {'id': 'new', 'type': 'video', 'path': 'new.mp4', 'role': 'history'})
+        self.save()
+        self.assertEqual(self.request(url)[2], b'0123456789')
+        self.assertEqual(self.request(url, Range='bytes=2-5')[2], b'2345')
+        self.assertEqual(self.request(url, Origin='https://example.invalid')[0], 403)
+
     def test_empty_setup_and_duplicate_registry_validation(self):
         self.registry.unlink()
         self.assertEqual(index.public_index()['projects'], [])

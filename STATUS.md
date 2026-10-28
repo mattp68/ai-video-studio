@@ -1,15 +1,20 @@
-# AI Video Studio — public pilot
+# AI Video Studio — 0.1.0-beta.2
 
-Updated:2026-10-21. Version:0.1.0-beta.1. Repository:https://github.com/mattp68/ai-video-studio .
+Prepared: 2026-10-28. This release incorporates the reviewed project/reference/technique UX improvements. GitHub's actual tag/release is authoritative for publication; local preparation alone is not a published release.
 
-The owner authorized public GitHub source distribution for HatchWorks testing and accepted the MIT code license, copyright2026 Matt Paige. This is an independent clean starter with empty personal seeds; local demo data is synthetic, ignored and excluded. No creator/customer footage, personal catalog, reference media or account access belongs in the source release. Public code hosting does not expose the local studio.
+## Included
 
-Current changes:capability reporting distinguishes website setup, rendering prerequisites, optional supported transcription and basic sound synthesis from browser/image/account checks that must happen in chat. Missing system tools are reported; authorized installation uses official sources or the organization’s process. Browser sign-in, inaccessible-reference fallbacks, locally generated effects and optional services are documented. The installation prompt names the concrete repository and pilot tag. Read SETUP.md/docs/CAPABILITIES.md.
+- Project starter modal with retained drafts, optional recorded script and exact video/technique inspiration; shared project-only notes/timestamps and predictable back navigation.
+- Cohesive library filtering, quiet public covers, clear analysis requests, source-pinned borrowing notes and reversible removal.
+- Stage/version review navigation, larger storyboard inspection, exact saved feedback, versioned scripts and corrected final promotion that retains historical sources/techniques.
+- Optional isolated HyperFrames editor copies and exact-version Sound summaries; generated/free audio defaults with personal libraries optional.
+- Green branding, shared Updates/version entry, beta-aware update prompt, release consistency checks and documented branch/PR/check/merge/release workflow.
+- Optional transcription security fixes: filelock4.2.1 and setuptools84.1.0. HyperFrames/GSAP and core media pins are unchanged.
 
-Verification scope:tests, dependency audits, exact-source export and fresh-directory synthetic checks are tracked in docs/VALIDATION.md and ignored runtime/pilot-release-2026-10-21. Existing local owner registries/approvals must remain unchanged. The main website/UI and production compositions are not altered by this setup refinement.
+## Preservation and verification
 
-Next:use docs/PILOT.md in fresh Codex and Claude Code chats and on the team’s own footage. Full media has only been validated locally on Apple Silicon macOS; other OS/media/transcription paths remain pilot coverage. The full Substack deep dive is forthcoming and is not an installation dependency. Keep each user’s projects/notes local and preserve source media.
+The public package contains reviewed source, docs, templates and empty examples only. Existing projects, original/exported media, catalogs/techniques, settings, feedback, scripts, approvals and local source changes must survive upgrades. No destructive data migration is required from beta.1.
 
-Start:python3 style-library/start.py; use its printed HTTP address. Source exports use release-files.txt/scripts/export_release.py and never the whole folder. Earlier RC archives/source checkpoints remain in ignored releases/runtime. Read docs/RELEASE.md before further publication; no automatic team messages or creative publication.
+Fresh source-only setup, unit/UI tests, dependency audits, synthetic assembly/render and populated beta.1 Git/ZIP upgrade/rollback are release checks. Actual results and limits are in docs/VALIDATION.md. Independent teammate upgrades, fresh Codex/Claude Code sessions and other-platform media workflows remain beta pilot work; use docs/PILOT.md. The original beta has no Updates UI; docs/UPDATING.md includes a direct prompt.
 
-Verified pilot preparation:52 tests, JS and registry checks; fresh source-only full setup including optional speech dependencies; synthetic2.4s assembly and5s1080×1920 render; actual encoded frame inspected; fresh pip check/imports. Current npm/core/37-package speech audits have zero known advisories and no skipped Python pins.87 explicit source files include MIT and capability guidance; all owner data remains ignored/excluded. Fresh assistant/team/other-platform/human-performance validation remains pending. The source-only exporter also blocks legacy style-library/references content.
+For future application work read docs/RELEASE.md. For installed upgrades read docs/UPDATING.md. This source release never approves, updates or publishes a creative project, grants account access or sends messages to anyone.

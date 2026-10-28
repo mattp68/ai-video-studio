@@ -15,7 +15,7 @@ def sources():
     for name in (ROOT/'release-files.txt').read_text().splitlines():
         if not name or name.startswith('#'):continue
         p=Path(name)
-        if (p.is_absolute() or '..' in p.parts or any(part.startswith('.env') for part in p.parts) or p.suffix in {'.pem','.key','.p12','.pfx'} or name in {'style-library/catalog.json','style-library/projects.json','style-library/settings.json'} or
+        if (p.is_absolute() or '..' in p.parts or any(part.startswith('.env') for part in p.parts) or p.suffix in {'.pem','.key','.p12','.pfx'} or name.startswith('style-library/dist/assets/reference-previews/') or name in {'style-library/catalog.json','style-library/projects.json','style-library/settings.json','style-library/reference-notes.json'} or
             (p.parts[0] in PRIVATE and name not in {'projects/README.md','references/README.md'}) or
             (len(p.parts)>1 and p.parts[:2] in {('style-library','runtime'),('style-library','references')})):raise ValueError('Private or unsafe release path: '+name)
         root=ROOT.resolve()
@@ -33,7 +33,8 @@ def sources():
     return rows
 
 def main():
-    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--name',default='ai-video-studio-0.1.0-beta.1');args=parser.parse_args()
+    version=json.loads((ROOT/'package.json').read_text())['version']
+    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--name',default='ai-video-studio-'+version);args=parser.parse_args()
     if not re.fullmatch(r'[a-z0-9][a-z0-9.-]*',args.name):raise SystemExit('Use a safe lowercase release name')
     rows=sources();out=ROOT/'releases';out.mkdir(exist_ok=True);archive=out/(args.name+'.zip')
     if archive.exists():raise SystemExit('Export already exists. Use a new --name to preserve it.')

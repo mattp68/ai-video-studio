@@ -9,6 +9,9 @@ import re
 import stat
 import tempfile
 import uuid
+import math
+import shutil
+import subprocess
 import project_index as index
 from library import BASE
 
@@ -149,12 +152,77 @@ def freeze_files(project, artifact):
     return result
 
 
+def promote_video(data, entry, project, artifact, event, changes, expected):
+    """Promote a registered review, keeping prior media/analysis and exact technique sources."""
+    old_path = entry.get('media_path')
+    prior = next((a for a in project['artifacts'] if a.get('version') == entry.get('version') and
+                  a.get('type') == 'video' and str(Path('projects') / project['id'] / a['path']) == old_path), None)
+    if entry.get('collection') != 'mine' or entry.get('project_id', project['id']) != project['id'] or prior is None:
+        raise ReviewError('The saved library source does not match this project’s version history. Ask your assistant to check it.')
+    old_file = index.resolve(project, prior['path'])
+    old_hash = index.digest(old_file)
+    expected[old_file] = old_hash
+    linked = [x for t in data.get('techniques', []) for x in t.get('examples', []) if x.get('style_id') == entry['id']]
+    if any(x.get('source_version') != entry['version'] or x.get('source_path') != old_path or
+           x.get('source_sha256') != old_hash for x in linked):
+        raise ReviewError('This video’s technique examples need rechecking before final approval. Ask your assistant to reconcile them.')
+    key = hashlib.sha256(json_bytes([entry['version'], old_path, old_hash])).hexdigest()[:16]
+    archive_id = entry['id'] + '-saved-' + key
+    archived = next((e for e in data['entries'] if e['id'] == archive_id), None)
+    if archived is not None:
+        if (archived.get('archived_from'), archived.get('version'), archived.get('media_path'), archived.get('source_sha256')) != (entry['id'], entry['version'], old_path, old_hash):
+            raise ReviewError('A saved library version conflicts with this source. Ask your assistant to check it.')
+    else:
+        archived = copy.deepcopy(entry)
+        archived.update(id=archive_id, archived_from=entry['id'], source_sha256=old_hash)
+        data['entries'].append(archived)
+    for example in linked:
+        example['style_id'] = archive_id
+    try: source = index.resolve(project, artifact.get('poster_path') or project.get('cover_path', ''))
+    except (OSError, ValueError): raise ReviewError('This version needs a saved cover image before final approval.')
+    if source.suffix.lower() not in ['.png', '.jpg', '.jpeg', '.webp']:
+        raise ReviewError('This version needs a saved cover image before final approval.')
+    relative = f"assets/posters/{project['id']}-{artifact.get('version', 'final').lower()}-approved{source.suffix.lower()}"
+    poster = BASE / 'dist' / relative
+    if poster.resolve() != poster.absolute() or poster.parent.resolve() != (BASE / 'dist/assets/posters').resolve():
+        raise ReviewError('The library poster folder needs repair.')
+    poster.parent.mkdir(parents=True, exist_ok=True)
+    image = source.read_bytes()
+    if poster.exists() and poster.read_bytes() != image:
+        raise ReviewError('That version’s poster already exists. Use a new version.')
+    changes[poster] = image
+    expected[poster] = index.digest(poster) if poster.exists() else None
+    expected[source] = hashlib.sha256(image).hexdigest()
+    path = index.resolve(project, artifact['path'])
+    duration = artifact.get('duration')
+    if shutil.which('ffprobe'):
+        try:
+            probe = subprocess.run(['ffprobe', '-v', 'error', '-show_entries', 'format=duration', '-of', 'json', str(path)],
+                                   capture_output=True, text=True, timeout=5)
+            if probe.returncode == 0: duration = float(json.loads(probe.stdout)['format']['duration'])
+        except (OSError, ValueError, KeyError, subprocess.TimeoutExpired): pass
+    if isinstance(duration, bool) or not isinstance(duration, (int, float)) or not math.isfinite(duration) or duration <= 0:
+        duration = None
+    from project_tools import source as editor_source
+    composition = editor_source(project, artifact, index.STUDIO / 'projects' / project['id'])
+    entry.update(version=artifact['version'], media_path=str(path.relative_to(index.STUDIO)), poster=relative,
+                 duration=duration, moments=[], source_url=None, source_sha256=next(f['sha256'] for f in event['files'] if f['path'] == artifact['path']),
+                 summary=artifact.get('description') or project.get('summary', ''), subtitle=f"{project.get('subtitle', project['title'])} · Final {artifact['version']}",
+                 state=f"Final {artifact['version']}", notes=[str(Path('projects') / project['id'] / n['path']) for n in project['source_notes']],
+                 evidence=f"Explicit studio approval of {artifact['version']}. Earlier style analysis is preserved in {archive_id}; timed moments have not been inferred for the new version.")
+    for field in ['poster_at', 'approval', 'composition']:
+        entry.pop(field, None)
+    if composition: entry['composition'] = str((composition / 'index.html').relative_to(index.STUDIO))
+
+
 def final_reference(project, artifact, event, changes, expected):
     catalog_bytes = CATALOG.read_bytes()
     expected[CATALOG.resolve()] = hashlib.sha256(catalog_bytes).hexdigest()
     data = json.loads(catalog_bytes)
     reference_id = project.get('reference_id')
     entry = next((e for e in data['entries'] if e['id'] == reference_id), None)
+    if entry is not None and entry.get('project_id', project['id']) != project['id']:
+        raise ReviewError('The saved library source belongs to another project. Ask your assistant to check it.')
     if entry is None:
         seed = project.get('reference_entry')
         if not isinstance(seed, dict) or not index.TOKEN.fullmatch(seed.get('id', '')):
@@ -162,6 +230,7 @@ def final_reference(project, artifact, event, changes, expected):
         if any(e['id'] == seed['id'] for e in data['entries']):
             raise ReviewError('This library ID is already in use. Ask your assistant to reconcile it.')
         entry = copy.deepcopy(seed)
+        entry.setdefault('created_at', event['at'])
         required = ['title', 'subtitle', 'creator', 'creator_id', 'summary', 'tags', 'palette', 'traits',
                     'keep', 'avoid', 'moments', 'notes', 'version', 'collection', 'evidence']
         if any(k not in entry for k in required) or not isinstance(entry['traits'], dict):
@@ -191,22 +260,24 @@ def final_reference(project, artifact, event, changes, expected):
         entry['poster'] = relative
         data['entries'].insert(0, entry)
         project['reference_id'] = entry['id']
+    if artifact['type'] == 'video' and entry.get('version') != artifact.get('version'):
+        promote_video(data, entry, project, artifact, event, changes, expected)
     if entry['collection'] != 'mine' or entry['version'] != artifact.get('version'):
         raise ReviewError('The library points to another version. Ask your assistant to reconcile it before approval.')
     if artifact['type'] == 'video':
-        expected = str(Path('projects') / project['id'] / artifact['path'])
-        if entry.get('media_path') != expected:
+        media_path = str(Path('projects') / project['id'] / artifact['path'])
+        if entry.get('media_path') != media_path:
             raise ReviewError('The library video differs from this checkpoint. Ask your assistant to reconcile it.')
         actual_hash = next(f['sha256'] for f in event['files'] if f['path'] == artifact['path'])
         for technique in data.get('techniques', []):
             for example in technique.get('examples', []):
                 if example.get('style_id') == entry['id'] and (
-                    example.get('source_version') != entry['version'] or example.get('source_path') != expected or
+                    example.get('source_version') != entry['version'] or example.get('source_path') != media_path or
                     example.get('source_sha256') != actual_hash):
                     raise ReviewError('This video’s technique examples need rechecking before final approval. Ask your assistant to reconcile them.')
     elif artifact['type'] == 'carousel':
-        expected = [str(Path('projects') / project['id'] / f['path']) for f in artifact['frames']]
-        if [f['path'] for f in entry.get('slides', [])] != expected:
+        slide_paths = [str(Path('projects') / project['id'] / f['path']) for f in artifact['frames']]
+        if [f['path'] for f in entry.get('slides', [])] != slide_paths:
             raise ReviewError('The library slide set differs from this checkpoint.')
     elif entry.get('project_id') != project['id']:
         raise ReviewError('The library needs a link to this approved project’s assets.')

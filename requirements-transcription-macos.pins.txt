@@ -3,7 +3,7 @@ anyio==4.15.1
 certifi==2026.10.19
 charset-normalizer==3.5.2
 click==8.5.0
-filelock==4.0.12
+filelock==4.2.1
 fsspec==2026.9.0
 h11==0.16.0
 hf-xet==1.7.0
@@ -28,7 +28,7 @@ PyYAML==6.0.3
 regex==2026.9.29
 requests==2.34.2
 scipy==1.18.1
-setuptools==84.0.0
+setuptools==84.1.0
 sympy==1.14.0
 tiktoken==0.14.0
 torch==2.14.1

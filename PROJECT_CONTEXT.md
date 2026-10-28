@@ -1,13 +1,23 @@
 # Your creative home
 
-This is the reusable AI Video Studio starter. It starts with empty personal project/reference registries. Your files stay in projects/ and references/; those folders and your generated catalogs are excluded from starter exports.
+This is the reusable AI Video Studio starter, version **0.1.0-beta.2**. Each installation starts with empty personal project/reference registries. Users bring their own footage, references, preferences and accounts. Existing installations keep their collections when upgrading.
 
-Read AGENTS.md, README.md, docs/WORKFLOW.md, docs/DESIGN-SYSTEM.md, then the requested project's STATUS/approval-state/brief/storyboard/review notes. Use SETUP.md for first setup and docs/HANDOFF.md for continuing work.
+## Start a new chat
 
-The chat is where you create. Projects holds spoken cuts, visual storyboards, designed reviews and final assets. Reference Library holds your work and outside inspiration. How it works explains the process and offers a starting prompt. Explicit Next step approvals save versioned decisions; publication is separate.
+Read AGENTS.md, README.md, docs/WORKFLOW.md and docs/DESIGN-SYSTEM.md. For creative work read the requested project's STATUS.md, approval-state.json, brief, current storyboard/design and latest review notes. Use SETUP.md for first installation and docs/HANDOFF.md to continue an existing project. CLAUDE.md points to the same shared instructions.
 
-Open with python3 style-library/start.py and use its printed HTTP address. Ports are discovered, not hardcoded. Local links work only in this installation. A new chat needs access to this folder and its saved notes.
+The chat is where you create. Projects holds spoken cuts, storyboards, designed reviews and final assets. Reference Library holds your work and outside inspiration, with exact technique examples and borrowing notes. How it works explains the process. Start a project prepares one request with optional script/inspiration; it does not create a project or send an AI message automatically. Raw takes get a spoken cut first; already edited speech is preserved.
 
-Technical validation and release/pilot status live in docs/VALIDATION.md and docs/RELEASE.md. A successful sample is not proof of creative quality or full assistant compatibility. No original creator media or account access is bundled.
+Save project scripts, feedback and approvals with their exact versions. Reference notes belong to the selected source/example. Copy for chat prepares a local handoff; inspect the real source and current project before editing. Saving a source link or cover never means it was analyzed. Library removal is reversible and retains source files/dependencies. Read AGENTS.md for exact-link receiving and preservation rules.
 
-Reference intake: use Add reference in the library to save a URL and optional title, creator and note. New cards are Not analyzed, with no claimed preview/analysis. Saving opens a prominent Analyze in chat next step; Keep browsing leaves it available on reopening. Copying does not complete analysis. Basic edits are under More options. Analyze in chat copies a concise request to enrich the same registered ID after actual inspection; it never sends a message automatically. Preserve reference_note and source identity when adding analysis. See AGENTS.md for the receiving rules.
+Open with `python3 style-library/start.py` and use its printed HTTP address. Ports are discovered, not hardcoded. Local links work only in this installation. A new chat needs access to this folder and its saved notes.
+
+## Software maintenance and upgrades
+
+Read docs/RELEASE.md for application development/publication: branch → pull request → checks → merge → numbered release. Read docs/UPDATING.md before changing an installed studio. Package.json is the canonical release version; the installed interface, lock, setup prompts and release notes must agree. Markdown instructions provide workflow continuity; .env is private configuration/secrets, not context memory.
+
+Publish reviewed application source only from the clean starter. Never copy a private production studio, owner catalogs, footage, techniques, reference covers, feedback, journals or accounts into a release. During an upgrade preserve those existing owner records and local customizations; never replace populated data with empty seeds. Check both clean installation and populated upgrade/rollback before a release. A merge and a published tag/release are separate steps and need appropriate user authorization.
+
+## Validation boundaries
+
+See docs/VALIDATION.md for observed results and docs/PILOT.md for independent-user checks. Full local media validation targets Apple Silicon macOS. Optional speech, browser connections, image generation and sound libraries depend on actual tools/accounts; no paid membership or private global skill is assumed. A synthetic sample or CI pass does not prove human take selection, audible quality or full assistant/platform compatibility. This remains a beta while those pilots continue.

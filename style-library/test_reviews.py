@@ -97,6 +97,15 @@ class ReviewTests(unittest.TestCase):
         self.assertEqual((self.project / 'review.mp4').read_bytes(), before_video)
         index.validate()
 
+    def test_final_approval_preserves_intentionally_removed_reference(self):
+        data=json.loads(self.catalog.read_text());marker={'demo-video':{'removed_at':'2026-10-27T12:00:00+00:00'}}
+        data['removed_references']=marker;self.catalog.write_text(json.dumps(data))
+        reviews.apply_decision(self.body())
+        after=json.loads(self.catalog.read_text())
+        self.assertEqual(after['removed_references'],marker)
+        self.assertEqual(after['entries'][0]['delivery_status'],'final')
+        self.assertEqual((self.project/'review.mp4').read_bytes(),b'current video fixture')
+
     def test_reopen_preserves_final_reference_and_history(self):
         reviews.apply_decision(self.body())
         result = reviews.apply_decision(self.body('reopen'))
@@ -133,11 +142,43 @@ class ReviewTests(unittest.TestCase):
 
     def test_library_version_mismatch_fails_before_any_metadata_write(self):
         original = (self.project / 'STATUS.md').read_bytes()
-        data = json.loads(self.catalog.read_text()); data['entries'][0]['version'] = 'V01'
+        data = json.loads(self.catalog.read_text()); data['entries'][0]['version'] = 'V99'
         self.catalog.write_text(json.dumps(data))
         with self.assertRaises(reviews.ReviewError): reviews.apply_decision(self.body())
         self.assertEqual((self.project / 'STATUS.md').read_bytes(), original)
         self.assertFalse((self.project / 'approval-state.json').exists())
+
+    def test_final_promotes_registered_older_source_and_preserves_technique_excerpt(self):
+        (self.project/'old.mp4').write_bytes(b'prior accepted video')
+        self.p['cover_path']='frame.png';self.p['artifacts'][0]['duration']=3
+        self.p['artifacts'][1]['path']='old.mp4';self.save()
+        data=json.loads(self.catalog.read_text());e=data['entries'][0]
+        e.update(version='V01',media_path='projects/demo/old.mp4',project_id='demo',duration=3)
+        example={'id':'old-move','style_id':'demo-video','source_version':'V01','source_path':e['media_path'],
+                 'source_sha256':index.digest(self.project/'old.mp4'),'start':0,'end':1}
+        data['techniques']=[{'id':'tech-old','examples':[example]}]
+        data['removed_references']={'demo-video':{'removed_at':'2026-10-27T00:00:00Z'}}
+        self.catalog.write_text(json.dumps(data));body=self.body()
+        reviews.apply_decision(body);after=json.loads(self.catalog.read_text())
+        current=next(e for e in after['entries'] if e['id']=='demo-video')
+        archived=next(e for e in after['entries'] if e.get('archived_from')=='demo-video')
+        self.assertEqual((current['version'],current['media_path'],current['duration']),('V02','projects/demo/review.mp4',3))
+        self.assertEqual(current['moments'],[])
+        self.assertEqual((archived['version'],archived['media_path'],archived['traits']),('V01','projects/demo/old.mp4',self.entry['traits']))
+        self.assertEqual(after['techniques'][0]['examples'][0],{**example,'style_id':archived['id']})
+        self.assertEqual(after['removed_references'],data['removed_references'])
+        self.assertEqual((self.project/'old.mp4').read_bytes(),b'prior accepted video')
+        self.assertTrue(reviews.apply_decision(body)['duplicate'])
+        self.assertEqual(len(json.loads(self.catalog.read_text())['entries']),2)
+
+    def test_promotion_keeps_stale_or_foreign_sources_blocked(self):
+        self.p['cover_path']='frame.png';self.save()
+        for update in [{'version':'V01','project_id':'another-project'}, {'version':'V99'}]:
+            data=json.loads(self.catalog.read_text());data['entries'][0].update(update);self.catalog.write_text(json.dumps(data))
+            before=self.catalog.read_bytes()
+            with self.assertRaises(reviews.ReviewError):reviews.apply_decision(self.body())
+            self.assertEqual(self.catalog.read_bytes(),before)
+            self.assertFalse((self.project/'approval-state.json').exists())
 
     def test_changed_technique_source_is_not_silently_promoted(self):
         data = json.loads(self.catalog.read_text())

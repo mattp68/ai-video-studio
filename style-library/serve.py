@@ -4,10 +4,16 @@ from pathlib import Path
 from urllib.parse import urlparse, parse_qs, unquote
 import argparse, json, mimetypes, re
 from library import BASE, STUDIO, catalog, entry_map, reference_brief, context_handoff, site_settings
-from project_index import public_index, get_file
+from project_index import public_index, get_file, get_asset
 from review_actions import apply_decision, ReviewError
 from security import registered_file, MEDIA, NOTES
-from reference_intake import save as save_reference, current as reference_state, IntakeError
+from reference_intake import save as save_reference, current as reference_state, visibility_state, set_visibility, IntakeError
+from feedback import save as save_feedback, current as feedback_state, save_link as save_feedback_link, FeedbackError
+from reference_notes import save as save_reference_note, current as reference_notes_state, handoff as reference_handoff, NoteError
+from reference_preview import save as save_reference_preview, PreviewError
+from project_tools import state as project_tools_state, open_editor, ToolsError
+
+from project_script import current as script_state, save as save_script
 
 class Handler(SimpleHTTPRequestHandler):
     def trusted(self, write=False):
@@ -30,9 +36,93 @@ class Handler(SimpleHTTPRequestHandler):
         super().end_headers()
 
     def do_POST(self):
+        if self.path == '/project-script':
+            if not self.trusted(write=True):return
+            if self.headers.get('Transfer-Encoding') or len(self.headers.get_all('Content-Length',[]))!=1:return self.send_error(400)
+            if self.headers.get('X-Studio-Action')!='project-script':return self.send_error(403)
+            if self.headers.get_content_type()!='application/json':return self.send_error(415)
+            try:
+                size=int(self.headers.get('Content-Length','0'))
+                if not 0<size<=262144:return self.send_error(413)
+                result=save_script(json.loads(self.rfile.read(size)))
+            except json.JSONDecodeError:return self.json_error(400,'Use a valid script save request.')
+            except (FeedbackError,ReviewError) as error:return self.json_error(error.status,str(error))
+            except (OSError,ValueError,TypeError,KeyError):return self.json_error(503,'The script could not be saved. Existing scripts and your draft are preserved.')
+            return self.text(json.dumps(result),'application/json',False)
+
+        if self.path in {'/reference-preview','/open-editor'}:
+            if not self.trusted(write=True):return
+            if self.headers.get('Transfer-Encoding') or len(self.headers.get_all('Content-Length',[]))!=1:return self.send_error(400)
+            action='reference-preview' if self.path=='/reference-preview' else 'open-editor'
+            if self.headers.get('X-Studio-Action')!=action:return self.send_error(403)
+            if self.headers.get_content_type()!='application/json':return self.send_error(415)
+            try:
+                size=int(self.headers.get('Content-Length','0'))
+                if not 0<size<=4096:return self.send_error(413)
+                body=json.loads(self.rfile.read(size))
+                result=save_reference_preview(body) if action=='reference-preview' else open_editor(body)
+            except json.JSONDecodeError:return self.json_error(400,'Use a valid studio request.')
+            except (PreviewError,IntakeError,ToolsError,ReviewError) as error:return self.json_error(error.status,str(error))
+            except (OSError,ValueError,TypeError,KeyError):return self.json_error(503,'This action is unavailable. Your saved work is preserved.')
+            return self.text(json.dumps(result),'application/json',False)
+        if self.path in {'/reference-notes','/reference-handoff'}:
+            if not self.trusted(write=True):return
+            if self.headers.get('Transfer-Encoding') or len(self.headers.get_all('Content-Length',[]))!=1:return self.send_error(400)
+            action='reference-note' if self.path=='/reference-notes' else 'reference-handoff'
+            if self.headers.get('X-Studio-Action')!=action:return self.send_error(403)
+            if self.headers.get_content_type()!='application/json':return self.send_error(415)
+            try:
+                size=int(self.headers.get('Content-Length','0'))
+                if not 0<size<=(16384 if action=='reference-note' else 262144):return self.send_error(413)
+                body=json.loads(self.rfile.read(size))
+                result=save_reference_note(body) if action=='reference-note' else reference_handoff(body,'http://'+self.headers['Host'])
+            except json.JSONDecodeError:return self.json_error(400,'Use a valid reference note request.')
+            except (NoteError,FeedbackError,ReviewError) as error:return self.json_error(error.status,str(error))
+            except (OSError,ValueError,TypeError,KeyError):return self.json_error(503,'Reference notes are unavailable. Existing notes and your draft are preserved.')
+            return self.text(json.dumps(result),'application/json',False)
+        if self.path == '/reference-visibility':
+            if not self.trusted(write=True):return
+            if self.headers.get('Transfer-Encoding') or len(self.headers.get_all('Content-Length',[]))!=1:return self.send_error(400)
+            if self.headers.get('X-Studio-Action')!='reference-visibility':return self.send_error(403)
+            if self.headers.get_content_type()!='application/json':return self.send_error(415)
+            try:
+                size=int(self.headers.get('Content-Length','0'))
+                if not 0<size<=4096:return self.send_error(413)
+                result=set_visibility(json.loads(self.rfile.read(size)))
+            except json.JSONDecodeError:return self.json_error(400,'Use a valid library request.')
+            except (IntakeError,ReviewError) as error:return self.json_error(error.status,str(error))
+            except (OSError,ValueError,TypeError,KeyError):return self.json_error(503,'The library could not be changed. Your references are preserved.')
+            return self.text(json.dumps(result),'application/json',False)
         if not self.trusted(write=True): return
         if self.headers.get('Transfer-Encoding') or len(self.headers.get_all('Content-Length', [])) != 1:
             return self.send_error(400)
+        if self.path == '/feedback-link':
+            if not self.trusted(write=True):return
+            if self.headers.get('Transfer-Encoding') or len(self.headers.get_all('Content-Length',[]))!=1:return self.send_error(400)
+            if self.headers.get('X-Studio-Action')!='feedback-link':return self.send_error(403)
+            if self.headers.get_content_type()!='application/json':return self.send_error(415)
+            try:
+                size=int(self.headers.get('Content-Length','0'))
+                if not 0<size<=262144:return self.send_error(413)
+                result=save_feedback_link(json.loads(self.rfile.read(size)))
+            except json.JSONDecodeError:return self.json_error(400,'Use a valid JSON feedback selection.')
+            except (FeedbackError,ReviewError) as error:return self.json_error(error.status,str(error))
+            except (OSError,ValueError,TypeError,KeyError):return self.json_error(503,'The feedback link could not be prepared. Your saved notes are preserved.')
+            return self.text(json.dumps(result),'application/json',False)
+        if self.path == '/feedback':
+            if not self.trusted(write=True):return
+            if self.headers.get('Transfer-Encoding') or len(self.headers.get_all('Content-Length',[]))!=1:return self.send_error(400)
+            if self.headers.get('X-Studio-Action')!='feedback':return self.send_error(403)
+            if self.headers.get_content_type()!='application/json':return self.send_error(415)
+            try:
+                size=int(self.headers.get('Content-Length','0'))
+                if not 0<size<=16384:return self.send_error(413)
+                body=json.loads(self.rfile.read(size))
+                result=save_feedback(body)
+            except json.JSONDecodeError:return self.json_error(400,'Use a valid JSON feedback request.')
+            except (FeedbackError,ReviewError) as error:return self.json_error(error.status,str(error))
+            except (OSError,ValueError,TypeError,KeyError):return self.json_error(503,'Feedback could not be saved. Existing notes were preserved; try again.')
+            return self.text(json.dumps(result),'application/json',False)
         if self.path == '/references':
             if self.headers.get('X-Studio-Action')!='reference':return self.send_error(403)
             if self.headers.get_content_type()!='application/json':return self.send_error(415)
@@ -91,11 +181,43 @@ class Handler(SimpleHTTPRequestHandler):
     def respond(self, head=False):
         if not self.trusted(): return
         route=urlparse(self.path); path=unquote(route.path)
+        if path=='/project-tools':
+            if not self.trusted():return
+            try:
+                query=parse_qs(route.query,keep_blank_values=True)
+                if set(query)!={'project','artifact'} or any(len(v)!=1 for v in query.values()):return self.send_error(400)
+                return self.text(json.dumps(project_tools_state(query['project'][0],query['artifact'][0])),'application/json',head)
+            except ToolsError as error:return self.json_error(error.status,str(error))
+            except (OSError,ValueError,TypeError,KeyError):return self.json_error(503,'The project tools are unavailable. Your work is preserved.')
+        if path=='/reference-notes':
+            if not self.trusted():return
+            try:
+                query=parse_qs(route.query,keep_blank_values=True)
+                return self.text(json.dumps(reference_notes_state(query.get('id',[''])[0],query.get('example',[None])[0])),'application/json',head)
+            except (NoteError,ReviewError) as error:return self.json_error(error.status,str(error))
+            except (OSError,ValueError,TypeError,KeyError):return self.json_error(503,'Reference notes are unavailable. Existing notes are preserved.')
+        if path=='/reference-visibility':
+            if not self.trusted():return
+            try:return self.text(json.dumps(visibility_state(parse_qs(route.query).get('id',[''])[0])),'application/json',head)
+            except (IntakeError,ReviewError) as error:return self.json_error(error.status,str(error))
+            except (OSError,ValueError,TypeError,KeyError):return self.json_error(503,'The reference is unavailable.')
+        if path=='/project-script':
+            if not self.trusted():return
+            try:
+                query=parse_qs(route.query,keep_blank_values=True)
+                return self.text(json.dumps(script_state(query.get('project',[''])[0],query.get('version',[None])[0])),'application/json',head)
+            except (FeedbackError,ReviewError) as error:return self.json_error(error.status,str(error))
+            except (OSError,ValueError,TypeError,KeyError):return self.json_error(503,'Saved scripts are unavailable. Existing files are preserved.')
+        if path=='/feedback':
+            if not self.trusted():return
+            try:return self.text(json.dumps(feedback_state(parse_qs(route.query).get('project',[''])[0], parse_qs(route.query,keep_blank_values=True).get('selection',[None])[0])),'application/json',head)
+            except (FeedbackError,ReviewError) as error:return self.json_error(error.status,str(error)) if not head else self.send_error(error.status)
+            except (OSError,ValueError,TypeError,KeyError):return self.send_error(503,'Saved feedback is unavailable.')
         if path=='/reference-state':
             try:return self.text(json.dumps(reference_state(parse_qs(route.query).get('id',[''])[0])),'application/json',head)
             except IntakeError as error:return self.json_error(error.status,str(error)) if not head else self.send_error(error.status)
             except (OSError,ValueError,TypeError,KeyError):return self.send_error(503,'The reference details are unavailable.')
-        if path == '/projects.json' or path.startswith('/project-files/'):
+        if path == '/projects.json' or path.startswith('/project-files/') or path.startswith('/project-assets/'):
             host = self.headers.get('Host', '')
             allowed = {f'127.0.0.1:{self.server.server_port}', f'localhost:{self.server.server_port}'}
             if host not in allowed or self.headers.get('Sec-Fetch-Site') == 'cross-site':
@@ -108,7 +230,7 @@ class Handler(SimpleHTTPRequestHandler):
                     return self.text(json.dumps(public_index()), 'application/json', head)
                 parts = path.strip('/').split('/')
                 if len(parts) != 3: raise ValueError()
-                filename, mime = get_file(parts[1], parts[2])
+                filename, mime = (get_asset if path.startswith('/project-assets/') else get_file)(parts[1], parts[2])
                 return self.file(filename, head, content_type=mime)
             except (KeyError, IndexError, StopIteration, ValueError, OSError):
                 return self.send_error(404, 'This project checkpoint is unavailable. Read its current project notes.')

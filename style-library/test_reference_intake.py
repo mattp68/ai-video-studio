@@ -100,3 +100,93 @@ class ReferenceTests(unittest.TestCase):
             status,raw=request({},'',path='/reference-state?id='+id,method='GET');self.assertEqual(status,200);self.assertIn('revision',json.loads(raw))
             for headers in [{'Host':'attacker.invalid'},{'Origin':'https://attacker.invalid'},{'Sec-Fetch-Site':'cross-site'}]:self.assertEqual(request(headers,'',path='/reference-state?id='+id,method='GET')[0],403)
         finally:server.shutdown();server.server_close();t.join()
+
+
+    def test_remove_restore_both_collections_preserves_entries_and_dependencies(self):
+        first=intake.save(self.body)['id'];second=intake.save({**self.body,'url':'https://example.com/own'})['id']
+        data=self.data();next(e for e in data['entries'] if e['id']==second)['collection']='mine'
+        data['techniques']=[{'id':'tech-demo','examples':[{'id':'exact-example','style_id':first}]}]
+        self.catalog.write_text(json.dumps(data));before=copy.deepcopy(data)
+        for id in [first,second]:
+            state=intake.visibility_state(id)
+            removed=intake.set_visibility({'id':id,'action':'remove','revision':state['revision']})
+            self.assertTrue(removed['removed']);self.assertTrue(removed['changed'])
+            self.assertEqual(self.data()['entries'],before['entries']);self.assertEqual(self.data()['techniques'],before['techniques'])
+            count=len(list(storage.JOURNALS.glob('*/transaction.json')))
+            repeat=intake.set_visibility({'id':id,'action':'remove','revision':removed['revision']})
+            self.assertFalse(repeat['changed']);self.assertEqual(count,len(list(storage.JOURNALS.glob('*/transaction.json'))))
+            restored=intake.set_visibility({'id':id,'action':'restore','revision':removed['revision']})
+            self.assertFalse(restored['removed']);self.assertNotIn(id,self.data()['removed_references'])
+        self.assertEqual(self.data()['entries'],before['entries']);self.assertEqual(self.index.read_text(),'{"projects":[]}')
+
+    def test_visibility_rejects_stale_unknown_and_invalid_requests(self):
+        id=intake.save(self.body)['id'];state=intake.visibility_state(id)
+        body={'id':id,'action':'remove','revision':state['revision']}
+        removed=intake.set_visibility(body)
+        with self.assertRaises(intake.IntakeError) as error:intake.set_visibility(body)
+        self.assertEqual(error.exception.status,409)
+        before=self.catalog.read_bytes()
+        for delta in [{'id':'../outside'},{'id':'unknown'},{'revision':False},{'action':'delete'},{'extra':'x'}]:
+            with self.subTest(delta=delta),self.assertRaises(intake.IntakeError):intake.set_visibility({**body,**delta})
+        self.assertEqual(before,self.catalog.read_bytes())
+        # A later source update cannot be overwritten by an old Restore action.
+        data=self.data();data['entries'][0]['summary']='New analysis';self.catalog.write_text(json.dumps(data))
+        with self.assertRaises(intake.IntakeError):intake.set_visibility({'id':id,'action':'restore','revision':removed['revision']})
+        self.assertEqual(self.data()['entries'][0]['summary'],'New analysis')
+
+    def test_duplicate_and_detail_edit_do_not_restore_removed_reference(self):
+        id=intake.save(self.body)['id'];state=intake.visibility_state(id)
+        intake.set_visibility({'id':id,'action':'remove','revision':state['revision']})
+        before=self.catalog.read_bytes();result=intake.save(self.body)
+        self.assertTrue(result['duplicate']);self.assertEqual(before,self.catalog.read_bytes())
+        edit=intake.current(id);intake.save({'action':'edit','id':id,'revision':edit['revision'],'title':'Edited','creator':edit['creator'],'note':edit['note']})
+        self.assertTrue(intake.visibility_state(id)['removed']);self.assertEqual(self.data()['entries'][0]['title'],'Edited')
+
+    def test_visibility_concurrent_removals_and_external_changes(self):
+        ids=[intake.save({**self.body,'url':f'https://example.com/{i}'})['id'] for i in range(2)]
+        bodies=[{'id':id,'action':'remove','revision':intake.visibility_state(id)['revision']} for id in ids]
+        errors=[]
+        def remove(body):
+            try:intake.set_visibility(body)
+            except Exception as error:errors.append(error)
+        threads=[threading.Thread(target=remove,args=(body,)) for body in bodies]
+        for thread in threads:thread.start()
+        for thread in threads:thread.join()
+        self.assertFalse(errors);self.assertEqual(set(self.data()['removed_references']),set(ids))
+        commit=storage.commit;external=self.data();external['owner_change']='Keep this'
+        def changed(*args,**kwargs):self.catalog.write_text(json.dumps(external));return commit(*args,**kwargs)
+        with patch.object(storage,'commit',side_effect=changed),self.assertRaises(intake.IntakeError):
+            intake.set_visibility({'id':ids[0],'action':'restore','revision':intake.visibility_state(ids[0])['revision']})
+        self.assertEqual(self.data(),external)
+
+    def test_visibility_corrupt_symlink_and_recovery_storage_are_preserved(self):
+        id=intake.save(self.body)['id'];state=intake.visibility_state(id);body={'id':id,'action':'remove','revision':state['revision']}
+        data=self.data();data['removed_references']=[];self.catalog.write_text(json.dumps(data));before=self.catalog.read_bytes()
+        with self.assertRaises(intake.IntakeError):intake.set_visibility(body)
+        self.assertEqual(before,self.catalog.read_bytes())
+        self.catalog.unlink();outside=self.root/'outside.json';outside.write_bytes(before);self.catalog.symlink_to(outside)
+        with self.assertRaises(storage.ReviewError):intake.set_visibility(body)
+        self.assertEqual(before,outside.read_bytes());self.catalog.unlink();data.pop('removed_references');self.catalog.write_text(json.dumps(data))
+        journal=storage.JOURNALS/'unfinished';journal.mkdir();(journal/'transaction.json').write_text('{"state":"prepared"}')
+        before=self.catalog.read_bytes()
+        with self.assertRaises(intake.IntakeError):intake.set_visibility(body)
+        self.assertEqual(before,self.catalog.read_bytes())
+
+    def test_visibility_endpoint_guards_and_reload(self):
+        id=intake.save(self.body)['id'];server=ThreadingHTTPServer(('127.0.0.1',0),Quiet)
+        thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start();origin=f'http://127.0.0.1:{server.server_port}'
+        headers={'Origin':origin,'Content-Type':'application/json','X-Studio-Action':'reference-visibility'}
+        body=json.dumps({'id':id,'action':'remove','revision':intake.visibility_state(id)['revision']})
+        def request(h,payload=body,method='POST',path='/reference-visibility'):
+            c=http.client.HTTPConnection('127.0.0.1',server.server_port);c.request(method,path,body=payload,headers=h);r=c.getresponse();result=(r.status,r.read());c.close();return result
+        try:
+            before=self.catalog.read_bytes()
+            for remove in ['Origin','X-Studio-Action']:
+                h=headers.copy();h.pop(remove);self.assertEqual(request(h)[0],403)
+            for extra in [{'Host':'attacker.invalid'},{'Origin':'https://attacker.invalid'},{'Sec-Fetch-Site':'cross-site'}]:self.assertEqual(request({**headers,**extra})[0],403)
+            self.assertEqual(request({**headers,'Content-Type':'text/plain'})[0],415)
+            self.assertEqual(request(headers,'x'*4097)[0],413);self.assertEqual(request(headers,'{bad')[0],400)
+            self.assertEqual(before,self.catalog.read_bytes());self.assertEqual(request(headers)[0],200)
+            status,raw=request({},'',method='GET',path='/reference-visibility?id='+id);self.assertEqual(status,200);self.assertTrue(json.loads(raw)['removed'])
+            self.assertEqual(request({'Origin':'https://attacker.invalid'},'',method='GET',path='/reference-visibility?id='+id)[0],403)
+        finally:server.shutdown();server.server_close();thread.join()
