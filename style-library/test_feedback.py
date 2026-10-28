@@ -252,7 +252,9 @@ class FeedbackTests(unittest.TestCase):
                 self.assertIn(request({**valid, **extra})[0], [400, 403])
             self.assertEqual(request({'Content-Type': 'application/json'})[0], 403)
             self.assertEqual(request({**valid, 'Content-Type': 'text/plain'})[0], 415)
-            self.assertEqual(request(valid, payload='x' * 262145)[0], 413)
+            # Reject the declared size before any upload. Sending the entire rejected
+            # body races the server's close and can reset the client socket on macOS.
+            self.assertEqual(request({**valid, 'Content-Length': '262145'}, payload='')[0], 413)
             self.assertEqual(request(valid, payload='{bad')[0], 400)
             status, result = request(valid); self.assertEqual(status, 200)
             token = json.loads(result)['id']

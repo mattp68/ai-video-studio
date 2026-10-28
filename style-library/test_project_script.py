@@ -74,7 +74,8 @@ class ScriptTests(unittest.TestCase):
             body=json.dumps(self.body());headers={'Origin':origin,'Content-Type':'application/json'}
             self.assertEqual(request('POST',headers,body)[0],403)
             headers['X-Studio-Action']='project-script';self.assertEqual(request('POST',headers,body)[0],200)
-            self.assertEqual(request('POST',headers,'x'*262145)[0],413)
+            # No body is needed: an oversized declared length must fail before read.
+            self.assertEqual(request('POST',{**headers,'Content-Length':'262145'},'')[0],413)
         finally:server.shutdown();server.server_close();thread.join()
 
 if __name__=='__main__':unittest.main()
