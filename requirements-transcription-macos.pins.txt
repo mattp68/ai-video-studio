@@ -15,7 +15,7 @@ Jinja2==3.1.6
 llvmlite==0.50.0
 MarkupSafe==3.0.4
 mlx==0.32.3
-mlx-metal==0.32.3
+mlx-metal==0.32.4
 mlx-whisper==0.4.3
 more-itertools==11.1.0
 mpmath==1.3.0
