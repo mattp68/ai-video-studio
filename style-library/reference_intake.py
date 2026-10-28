@@ -62,6 +62,57 @@ def read_catalog():
 def editable(entry):
     return entry.get('collection')=='reference' and bool(entry.get('source_url'))
 
+def removed_references(data):
+    removed=data.get('removed_references',{})
+    if not isinstance(removed,dict) or any(
+        not isinstance(id,str) or not index.TOKEN.fullmatch(id) or
+        not isinstance(value,dict) or set(value)!={'removed_at'} or
+        not isinstance(value['removed_at'],str) or not value['removed_at']
+        for id,value in removed.items()
+    ):raise IntakeError('The removed references need repair before changing the library.',503)
+    return removed
+
+def visibility_snapshot(reference_id):
+    if not isinstance(reference_id,str) or not index.TOKEN.fullmatch(reference_id):raise IntakeError('Unknown reference.',404)
+    storage.check_storage()
+    if CATALOG.resolve()!=storage.CATALOG.resolve():raise IntakeError('The library path needs repair.',503)
+    before,data=read_catalog()
+    entry=next((e for e in data['entries'] if e.get('id')==reference_id),None)
+    if not entry:raise IntakeError('That reference is unavailable.',404)
+    removed=removed_references(data)
+    state={'id':reference_id,'removed':reference_id in removed,
+           'revision':revision({'entry':entry,'removed':removed.get(reference_id)})}
+    return before,data,state
+
+def visibility_state(reference_id):
+    with index.STATE_LOCK:
+        return visibility_snapshot(reference_id)[2]
+
+def set_visibility(body):
+    """Hide/restore a card; retain source entries, media, IDs and technique snapshots."""
+    if (not isinstance(body,dict) or set(body)!={'id','action','revision'} or
+        not isinstance(body.get('action'),str) or body.get('action') not in {'remove','restore'} or
+        not isinstance(body.get('revision'),str) or not re.fullmatch(r'[0-9a-f]{64}',body['revision'])):
+        raise IntakeError('Choose a reference to remove or restore.')
+    with index.STATE_LOCK:
+        before,data,state=visibility_snapshot(body['id'])
+        for path in storage.JOURNALS.glob('*/transaction.json'):
+            if json.loads(path.read_text()).get('state')=='prepared':raise IntakeError('An earlier library save needs recovery before continuing.',503)
+        if body['revision']!=state['revision']:raise IntakeError('This reference changed. Refresh and review it before trying again.',409)
+        removed=body['action']=='remove'
+        if state['removed']==removed:return {**state,'changed':False}
+        markers=data.setdefault('removed_references',{})
+        if removed:markers[body['id']]={'removed_at':datetime.now(timezone.utc).isoformat()}
+        else:markers.pop(body['id'])
+        try:
+            storage.commit({CATALOG.resolve():storage.json_bytes(data)},
+                {'request_id':str(uuid.uuid4()),'operation':body['action']+'-library-reference','reference_id':body['id']},
+                {CATALOG.resolve():hashlib.sha256(before).hexdigest()})
+        except storage.ReviewError as error:raise IntakeError(str(error),error.status)
+        entry=next(e for e in data['entries'] if e['id']==body['id'])
+        return {'id':body['id'],'removed':removed,'changed':True,
+                'revision':revision({'entry':entry,'removed':markers.get(body['id'])})}
+
 def current(reference_id):
     if not isinstance(reference_id,str) or not index.TOKEN.fullmatch(reference_id):raise IntakeError('Unknown reference.',404)
     with index.STATE_LOCK:
@@ -98,7 +149,7 @@ def save(body):
             host=urlparse(url).hostname.removeprefix('www.');label={'instagram.com':'Instagram','tiktok.com':'TikTok','youtube.com':'YouTube','youtu.be':'YouTube'}.get(host,host)
             title=title or label+' reference'
             entry={'id':reference_id,'asset_type':'link','collection':'reference','version':'LINK','title':title,'subtitle':label+' · saved source link',
-                   'source_url':url,'summary':'Saved for your next edit. Add visual context with Analyze in chat.',
+                   'source_url':url,'summary':'Saved for your next edit. Analyze it in your editing chat to add style notes and useful moments.',
                    'tags':[],'palette':['#eeefe5','#252820','#ce593b'],'poster':'assets/link-reference.svg',
                    'traits':{},'keep':[],'avoid':[],'moments':[],'notes':[],
                    'analysis_status':'not_analyzed','evidence':'Link and user notes only. The video, style, sound and creator have not been independently verified.',

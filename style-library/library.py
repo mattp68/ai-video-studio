@@ -1,6 +1,6 @@
 """Read-only registry helpers shared by the gallery server and future editing agents."""
 from pathlib import Path
-import json, sys, re
+import json, sys, re, hashlib
 from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 
 BASE = Path(__file__).resolve().parent
@@ -189,6 +189,9 @@ def context_handoff(ids, notes=None, mode='short', base_url=''):
 def validate():
     entries = catalog()['entries']; ids = [e['id'] for e in entries]
     assert len(ids)==len(set(ids)), 'Duplicate style id'
+    removed=catalog().get('removed_references',{})
+    assert isinstance(removed,dict), 'Invalid removed references'
+    assert all(isinstance(id,str) and re.fullmatch(r'[a-z0-9][a-z0-9-]*',id) and isinstance(value,dict) and set(value)=={'removed_at'} and isinstance(value['removed_at'],str) and value['removed_at'] for id,value in removed.items()), 'Invalid removed reference marker'
     sources=[source_key(e['source_url'])for e in entries if e.get('source_url')]
     assert len(sources)==len(set(sources)), 'Duplicate source post; update its existing entry.'
     creators={}
@@ -231,7 +234,8 @@ def validate():
         for x in examples.values():
             e=by_id[x['style_id']]
             assert x['source_version']==e['version'] and x['source_path']==e['media_path'], 'Recheck technique after source-version change'
-            assert x['source_sha256']==source_evidence[e['id']]['source_sha256'], 'Recheck technique after source-media change'
+            actual = hashlib.sha256((STUDIO/e['media_path']).read_bytes()).hexdigest() if e.get('archived_from') else source_evidence[e['id']]['source_sha256']
+            assert x['source_sha256']==actual, 'Recheck technique after source-media change'
             assert e.get('media_path'), 'Technique example needs local media'
             assert 0<=x['start']<=x['poster_at']<x['end']<=e['duration'], (t['id'],x['id'])
             assert (BASE/'dist'/x['poster']).is_file(), x['poster']

@@ -6,7 +6,7 @@ Run `python3 scripts/setup.py --check` for a local capability report. A status o
 
 | Capability | Included or installed | What to check |
 | --- | --- | --- |
-| Projects, library and review decisions | Python standard library and empty personal registries | Run setup, then start the local HTTP service. |
+| Projects, library, saved feedback and review decisions | Python standard library and empty personal registries | Run setup, then start the local HTTP service. |
 | Cuts, proxies and audio processing | Helpers use FFmpeg/FFprobe | System tools must be installed. |
 | Motion graphics and compositing | Pinned HyperFrames, GSAP and render-browser download | Run the full synthetic smoke workflow. |
 | Contact sheets | Project-local Pillow | Installed by full setup. |
@@ -24,7 +24,7 @@ Codex’s desktop browser capability may already be available in the app. Check 
 
 If a source asks for sign-in, the user signs in in the browser the assistant can access. A login in a different browser/profile may not carry over. Some sources remain blocked or cannot be downloaded. Ask for the original video file, a usable source or screenshots, and record the inspection limit. Never invent a creator, preview, timing or sound analysis from an inaccessible link.
 
-Add reference saves a link and note without fetching the source. Analyze in chat copies a request for inspection; it does not automatically download or send anything. A reference downloader is not installed by the baseline. Use an available, authorized method when appropriate, preserve original files and record provenance. Reference inspiration is separate from permission to reuse its footage or audio.
+Add reference saves a link and note, then tries to save its public cover image without downloading or analyzing the video. Copy analysis request explicitly copies a request for inspection; it does not automatically download or send anything. A reference downloader is not installed by the baseline. Use an available, authorized method when appropriate, preserve original files and record provenance. Reference inspiration is separate from permission to reuse its footage or audio.
 
 ## How the assistant should handle a missing capability
 
@@ -36,3 +36,5 @@ Add reference saves a link and note without fetching the source. Analyze in chat
 6. Report what was actually checked. An unavailable optional tool does not stop the core studio from opening.
 
 The full media workflow has been verified on Apple Silicon macOS on the maintainer’s machine. Windows, Intel Mac, Linux and fresh Codex/Claude sessions are pilot coverage. See [PILOT.md](PILOT.md). The website itself uses Python’s standard library; that is separate from a claim of complete media compatibility on every platform.
+
+Saved studio feedback is local data in projects/<slug>/review-feedback.json. Either assistant can read it when you ask to apply your notes. No direct chat integration, extra AI key or background agent is required. The website captures a version and a video time or storyboard scene; it does not start the edit.

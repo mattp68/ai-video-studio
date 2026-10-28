@@ -71,6 +71,16 @@ def get_file(project_id, slot):
     return target, MIME[target.suffix.lower()]
 
 
+def get_asset(project_id, file_id):
+    """Stable allowlisted file IDs survive inserting another version into the index."""
+    if not TOKEN.fullmatch(project_id) or not re.fullmatch(r'[a-f0-9]{64}', file_id):
+        raise ValueError('Unknown project asset')
+    project = next(p for p in registry()['projects'] if p['id'] == project_id)
+    relative = next(name for name in files(project) if hashlib.sha256(name.encode()).hexdigest() == file_id)
+    target = resolve(project, relative)
+    return target, MIME[target.suffix.lower()]
+
+
 def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
@@ -131,7 +141,7 @@ def _public_index():
         def expose(record):
             try:
                 resolve(project, record['path'])
-                record['url'] = f"/project-files/{project['id']}/{registered.index(record['path'])}"
+                record['url'] = f"/project-assets/{project['id']}/{hashlib.sha256(record['path'].encode()).hexdigest()}"
                 record['available'] = True
             except (OSError, ValueError):
                 record['available'] = False

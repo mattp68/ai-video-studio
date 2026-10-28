@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.1.0-beta.2 — 2026-10-28
+
+- Start projects from one modal with retained drafts, optional recorded scripts and videos/technique inspiration. Preview and selection cards share project-only notes and timestamps. X/Escape return one level at a time.
+- Refined library source toggles, search/filter/sort controls, bottom-aligned card credits and reversible removal with Undo/Restore. New references lead with an explicit analysis request; public covers load quietly and refresh thumbnails.
+- Cohesive reference/technique notes with exact examples, optional timestamps, saved notes and compact Copy for chat. Project review feedback retains exact versions and immutable selections.
+- Stage/version navigation, larger storyboard inspection, optional versioned project scripts and corrected final promotion while preserving earlier sources and techniques.
+- Optional isolated HyperFrames working copies and version-specific Sound summaries. Generated/free sound defaults; personal sound libraries remain optional. Renderer pins are unchanged. Optional transcription filelock/setuptools pins are patched for current security advisories.
+- Consistent green branding, shared footer/header Updates entry and installed version. Copied update requests include the official repository, beta releases, backup and owner-data preservation.
+- Documented branch/PR/check/merge/release workflow, release consistency checks and populated upgrade/rollback validation. Fresh installs start empty; existing collections, media and decisions are preserved.
+
+### Upgrading
+
+Follow docs/UPDATING.md in the existing installation. Back up first; apply reviewed source files only and retain local customizations. No owner-data schema migration is required from beta.1. This remains a beta: independent-user upgrades and fresh-assistant/other-platform media workflows need pilot feedback.
+
 ## 0.1.0-beta.1 — public pilot
 
 MIT code license, concrete repository/setup prompt, prerequisite guidance, read-only capability reporting, optional browser/transcription/image/sound guidance and regression checks for setup readiness. Personal registries/media remain excluded. Fresh assistant/team and other-platform results remain pilot work.

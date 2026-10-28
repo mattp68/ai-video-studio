@@ -33,3 +33,8 @@ __pycache__/
 /examples/studio-check/assets/gsap.min.js
 
 *.log
+
+/style-library/reference-notes.json
+
+# Owner-fetched public covers (not bundled source assets)
+style-library/dist/assets/reference-previews/
