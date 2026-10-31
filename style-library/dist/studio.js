@@ -120,11 +120,18 @@ window.Studio=(()=>{
   }
  }
  function showArtifact(a,index=0,update=true){
+  const sameStoryboard=activeArtifact?.id===a.id&&!!a.frames;
   window.ProjectFeedback?.retain();window.ProjectScript?.retain();pause();request++;activeArtifact=a;
   frameIndex=Math.max(0,Math.min((a.frames||[]).length-1,index));
+  const container=$('#project-artifact');
+  if(sameStoryboard&&ReviewLayout.updateFrame(container,a,frameIndex)){
+   window.ProjectFeedback?.render(activeProject,a,frameIndex);
+   if(update)history.replaceState(null,'',projectHash(activeProject,a,frameIndex));
+   return;
+  }
   stageChoices.set(activeProject.id+'/'+ReviewLayout.stage(activeProject,a),a.id);
   $('#review-navigation').innerHTML=ReviewLayout.navigation(activeProject,a);
-  const container=$('#project-artifact');container.innerHTML=ReviewLayout.content(activeProject,a,frameIndex);
+  container.innerHTML=ReviewLayout.content(activeProject,a,frameIndex);
   reviewControls();window.ProjectFeedback?.render(activeProject,a,frameIndex);window.ProjectTools?.mount(activeProject,a);window.ProjectScript?.mount(activeProject,a);
   if(a.available&&a.type==='document'){
    const token=request;fetch(a.url,{cache:'no-store'}).then(r=>{if(!r.ok)throw Error();return r.text();}).then(t=>{if(token===request)container.querySelector('.project-document').innerHTML=ReviewLayout.readable(t);}).catch(()=>{if(token===request)container.querySelector('.project-document').textContent='These notes could not load. Ask your assistant to relink this exact file.';});

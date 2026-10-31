@@ -109,3 +109,12 @@ Project-starter checks cover optional file locations, plain chat copy, spoken-cu
 ## UX V26 local preview
 
 Checks cover optional labels, project-only notes in previews/cards, zero and exact technique timestamps, manual cover-image ranges, draft/reload persistence, source-window validation, stale-source note review and X/Escape navigation. Native disposable checks verify both directions of note editing, one combined copied request and retained source/selection state. Narrow-screen layout and the actual production UI are inspected without saving production notes or approvals. Owner fingerprints and an exact clean source-only export are recorded separately.
+
+
+## Pending review: feedback history and scene navigation — 2026-10-31
+
+125 Python tests (including20 feedback persistence/HTTP checks) and49 dependency-free Node UI tests pass locally. New regressions cover correction histories, applied-note preservation, idempotent deletion/restore, stale-window changes, exact copied content revisions, legacy selections, newest-first display, per-note correction drafts and persistent storyboard controls. All JavaScript syntax, registry, source-seed and whitespace checks pass. No renderer or dependency pins changed.
+
+Disposable native browser checks exercised inline edit/save, delete, reload and recovery from All saved notes; an older version retained its Applied in V02 note/link. Two tabs verified that a stale correction is preserved and must be compared with the latest saved note before replacing it. Scene15→16 retained page scrollY1006; the scene strip advanced only to reveal the clicked item, and overview remained open on another selection. Real owner views were inspected read-only; six applied notes are visible on the original spoken cut, with a subtle olive focus border/glow.80 owner metadata files are fingerprinted unchanged. These are local UI checks, not independent-device/media validation.
+
+The public change remains on a feature PR for user review. No merge, tag or numbered release is included in this task. Feedback schema1 receives optional history/updated_at/deleted_at fields only on explicit actions, with no migration or seed replacement. Preserve these fields and copied-link records on upgrades and rollback; older interfaces do not understand deletion markers.

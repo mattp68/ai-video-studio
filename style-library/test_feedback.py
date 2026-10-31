@@ -1,6 +1,7 @@
 """Feedback stays attached to exact versions and cannot change approvals or escape a project."""
 import copy
 import http.client
+import hashlib
 from http.server import ThreadingHTTPServer
 import json
 from pathlib import Path
@@ -254,7 +255,7 @@ class FeedbackTests(unittest.TestCase):
             self.assertEqual(request({**valid, 'Content-Type': 'text/plain'})[0], 415)
             # Reject the declared size before any upload. Sending the entire rejected
             # body races the server's close and can reset the client socket on macOS.
-            self.assertEqual(request({**valid, 'Content-Length': '262145'}, payload='')[0], 413)
+            self.assertEqual(request({**valid, 'Content-Length': '1048577'}, payload='')[0], 413)
             self.assertEqual(request(valid, payload='{bad')[0], 400)
             status, result = request(valid); self.assertEqual(status, 200)
             token = json.loads(result)['id']
@@ -264,3 +265,120 @@ class FeedbackTests(unittest.TestCase):
             self.assertEqual(request({'Origin': 'https://example.invalid'}, 'GET', path='/feedback?project=demo&selection=' + token)[0], 403)
         finally:
             server.shutdown(); server.server_close(); thread.join()
+
+    def change_body(self, note, action='edit', **extra):
+        return {'project_id': 'demo', 'note_id': note['id'], 'revision': note['revision'],
+                'action': action, 'request_id': str(uuid.uuid4()), **extra}
+
+    def test_edit_delete_restore_keep_source_history_and_approval_bytes(self):
+        note = feedback.save(self.body)['notes'][0]
+        edit = self.change_body(note, text='Make only the opening cards larger.')
+        result = feedback.change(edit)['notes'][0]
+        self.assertEqual(result['text'], edit['text'])
+        for field in ('id', 'created_at', 'artifact_id', 'version', 'time', 'frame', 'source', 'status', 'request'):
+            self.assertEqual(result[field], note[field])
+        self.assertEqual(result['history'][0]['before']['text'], note['text'])
+        self.assertEqual(feedback.change(edit)['notes'], feedback.current('demo')['notes'])
+        deleted = feedback.change(self.change_body(result, 'delete'))['notes'][0]
+        self.assertIn('deleted_at', deleted)
+        restored = feedback.change(self.change_body(deleted, 'restore'))['notes'][0]
+        self.assertNotIn('deleted_at', restored)
+        self.assertEqual([e['action'] for e in restored['history']], ['edit', 'delete', 'restore'])
+        for p, before in self.before.items():
+            self.assertEqual(p.read_bytes(), before)
+
+    def test_applied_note_edit_retains_application_and_original_wording(self):
+        feedback.save(self.body)
+        path = self.project / 'review-feedback.json'
+        data = json.loads(path.read_text())
+        data['notes'][0].update(status='applied', applied_in={'artifact_id': 'edit-v03', 'version': 'V03'})
+        path.write_text(json.dumps(data))
+        note = feedback.current('demo')['notes'][0]
+        result = feedback.change(self.change_body(note, text='Clarified historical note.'))['notes'][0]
+        self.assertEqual(result['status'], 'applied')
+        self.assertEqual(result['applied_in'], note['applied_in'])
+        self.assertEqual(result['history'][0]['before']['applied_in'], note['applied_in'])
+        self.assertEqual(result['history'][0]['before']['text'], note['text'])
+
+    def test_concurrent_note_actions_reject_stale_writes_and_changed_application(self):
+        note = feedback.save(self.body)['notes'][0]
+        stale = self.change_body(note, text='Stale edit')
+        updated = feedback.change(self.change_body(note, text='Fresh edit'))['notes'][0]
+        before = (self.project / 'review-feedback.json').read_bytes()
+        for action in (stale, self.change_body(note, 'delete')):
+            with self.assertRaisesRegex(feedback.FeedbackError, 'another window'):
+                feedback.change(action)
+        self.assertEqual((self.project / 'review-feedback.json').read_bytes(), before)
+        path = self.project / 'review-feedback.json'
+        data = json.loads(path.read_text()); data['notes'][0]['status'] = 'applied'
+        path.write_text(json.dumps(data))
+        with self.assertRaises(feedback.FeedbackError):
+            feedback.change(self.change_body(updated, text='Cannot erase applied history'))
+
+    def test_deleted_notes_reject_edits_and_copy_and_restore_is_idempotent(self):
+        note = feedback.save(self.body)['notes'][0]
+        delete = self.change_body(note, 'delete')
+        removed = feedback.change(delete)['notes'][0]
+        self.assertEqual(feedback.change(delete)['notes'][0], removed)
+        for body in (self.change_body(removed, text='No'), self.change_body(removed, 'delete')):
+            with self.assertRaises(feedback.FeedbackError): feedback.change(body)
+        with self.assertRaises(feedback.FeedbackError):
+            feedback.save_link({'project_id': 'demo', 'artifact_id': None, 'note_ids': [note['id']]})
+        restore = self.change_body(removed, 'restore')
+        restored = feedback.change(restore)['notes'][0]
+        self.assertEqual(feedback.change(restore)['notes'][0], restored)
+        with self.assertRaises(feedback.FeedbackError):
+            feedback.change({**restore, 'action': 'delete'})
+
+    def test_shared_links_detect_edits_but_allow_application_and_later_notes(self):
+        note = feedback.save(self.body)['notes'][0]
+        body = {'project_id': 'demo', 'artifact_id': note['artifact_id'], 'note_ids': [note['id']],
+                'note_revisions': {note['id']: note['content_revision']}}
+        link = feedback.save_link(body)
+        edited = feedback.change(self.change_body(note, text='Different instruction'))['notes'][0]
+        with self.assertRaisesRegex(feedback.FeedbackError, 'edited or deleted'):
+            feedback.current('demo', link['id'])
+        with self.assertRaises(feedback.FeedbackError): feedback.save_link(body)
+        new_link = feedback.save_link({**body, 'note_revisions': {note['id']: edited['content_revision']}})
+        self.assertNotEqual(link['id'], new_link['id'])
+        path = self.project / 'review-feedback.json'
+        data = json.loads(path.read_text()); data['notes'][0]['status'] = 'applied'
+        path.write_text(json.dumps(data))
+        self.assertEqual(feedback.current('demo', new_link['id'])['selection']['note_ids'], [note['id']])
+
+    def test_change_validation_and_http_origin_guards(self):
+        note = feedback.save(self.body)['notes'][0]
+        valid = self.change_body(note, text='Corrected note')
+        for invalid in ({**valid, 'text': ''}, {**valid, 'action': 'erase'}, {**valid, 'revision': 'bad'},
+                        {**valid, 'note_id': '../outside'}, {**valid, 'time': 1}, {**valid, 'text': 'a'*2001}):
+            with self.assertRaises(feedback.FeedbackError): feedback.change(invalid)
+        server = ThreadingHTTPServer(('127.0.0.1', 0), Quiet)
+        thread = threading.Thread(target=server.serve_forever, daemon=True); thread.start()
+        try:
+            port = server.server_port
+            def post(headers, body=valid):
+                c = http.client.HTTPConnection('127.0.0.1', port)
+                c.request('POST', '/feedback-note', json.dumps(body), headers)
+                r = c.getresponse(); status = r.status; r.read(); c.close(); return status
+            headers = {'Origin': f'http://127.0.0.1:{port}', 'Content-Type': 'application/json', 'X-Studio-Action': 'feedback-note'}
+            self.assertEqual(post({**headers, 'Origin': 'https://attacker.example'}), 403)
+            self.assertEqual(post({**headers, 'X-Studio-Action': 'feedback'}), 403)
+            self.assertEqual(post({**headers, 'Content-Type': 'text/plain'}), 415)
+            self.assertEqual(post(headers), 200)
+            self.assertEqual(post(headers), 200)
+        finally:
+            server.shutdown(); server.server_close(); thread.join()
+
+    def test_legacy_links_remain_readable_until_selected_instruction_changes(self):
+        note = feedback.save(self.body)['notes'][0]
+        payload = {'project_id': 'demo', 'artifact_id': note['artifact_id'],
+                   'artifact_ids': [note['artifact_id']], 'note_ids': [note['id']]}
+        token = hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()[:24]
+        record = {**payload, 'id': token, 'created_at': '2026-10-28T00:00:00Z'}
+        (self.project / 'review-feedback-links.json').write_text(json.dumps(
+            {'schema_version': 1, 'project_id': 'demo', 'links': {token: record}}))
+        self.assertEqual(feedback.current('demo', token)['selection'], record)
+        feedback.change(self.change_body(note, text='Updated instruction'))
+        with self.assertRaisesRegex(feedback.FeedbackError, 'edited or deleted'):
+            feedback.current('demo', token)
+        self.assertEqual(json.loads((self.project / 'review-feedback-links.json').read_text())['links'][token], record)

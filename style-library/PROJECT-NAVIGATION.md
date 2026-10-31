@@ -31,3 +31,10 @@ Editor working copies are retained and reopened for the same project/artifact an
 ## Final video promotion
 
 Explicit final approval may promote a known older preferred video when its version/path match this project’s registered history. The selected current review remains the only approval target. Its saved cover and local media become the preferred source; duration is read from FFprobe when available (or registered metadata), never copied from a different cut. Earlier source/analysis is retained in a catalog entry with archived_from and source_sha256, hidden from the full-video browse grid. Exact technique example IDs stay the same and keep their previous version/path/hash/poster/range via that source snapshot. Saved technique borrowing notes keep their original source identity; current full-video notes use the new source revision. Preserve archived sources, removed_references and original media. Wrong project/version/path, stale snapshots or competing writes still block approval. This updates review/library metadata only, never an editor working copy or export.
+
+
+## Feedback corrections and history
+
+POST /feedback-note accepts edit/delete/restore with the note's optimistic revision and a unique request UUID. It preserves exact source coordinates, application state and prior snapshots in history; deletion sets deleted_at and is recoverable after reload from All saved notes. Applied notes remain visible on their original version, sorted by updated_at/created_at newest first, while copying includes only open, nondeleted notes. New immutable feedback links pin content revisions, so a stale copy cannot silently apply an edited instruction. No migration rewrites existing owner files.
+
+Storyboard scene changes update media and scene notes in place, retain the filmstrip and overview/disclosure state, keep per-scene drafts, and replace the hash without scrolling the page to the review header. Stage and version changes retain their existing navigation behavior.

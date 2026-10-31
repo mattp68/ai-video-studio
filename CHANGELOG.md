@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- Edit saved project feedback inline, or delete with Undo and persistent recovery in All saved notes. Prior wording and applied history remain attached to the original version.
+- Show applied feedback on earlier cuts, storyboards and edits, with links to the resulting version when registered. Order notes by newest save; chat copies include only open notes and detect subsequent edits.
+- Browse storyboard scenes without jumping to the page header or resetting the scene strip/overview. Keep scene drafts and keyboard focus.
+- Replace the heavy feedback field outline with a subtle olive focus border and glow, including forced-color keyboard support.
+
+This work is pending review. It is not a numbered release and does not update existing installations automatically.
+
 ## 0.1.0-beta.2 — 2026-10-28
 
 - Start projects from one modal with retained drafts, optional recorded scripts and videos/technique inspiration. Preview and selection cards share project-only notes and timestamps. X/Escape return one level at a time.

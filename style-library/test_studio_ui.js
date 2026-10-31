@@ -88,3 +88,22 @@ test('additional details and other links have explicit optional labels',()=>{
 test('captured Escape handles one level once even when focus has left a replaced video control',()=>{
  const h=starter();h.enter('reference');let prevented=0,stopped=0;const event={key:'Escape',repeat:false,preventDefault(){prevented++;},stopPropagation(){stopped++;}};h.documentHandlers.keydown(event);assert.equal(h.dialog.open,true);assert.equal(h.node('#start-close').attributes['aria-label'],'Back to project');h.documentHandlers.keydown({...event,repeat:true});assert.equal(h.node('#start-close').attributes['aria-label'],'Back to project');h.documentHandlers.keydown(event);assert.equal(h.dialog.open,true);h.documentHandlers.keydown(event);assert.equal(h.dialog.open,false);assert.equal(prevented,4);assert.equal(stopped,4);
 });
+
+test('scene changes retain the filmstrip, overview, disclosure and navigation controls',()=>{
+ const media={innerHTML:''},details={open:true},notes={innerHTML:'',querySelector:()=>details},position={},previous={},next={};
+ const thumbs=Array.from({length:3},(_,i)=>({dataset:{projectFrame:String(i)},attributes:{},setAttribute(k,v){this.attributes[k]=v;}}));
+ const filmstrip={scrollLeft:340,overview:true},controls={},feedback={draft:'Keep my scene note'};
+ const parts={'[data-scene-media]':media,'[data-scene-notes]':notes,'[data-scene-position]':position,'[data-frame-step="-1"]':previous,'[data-frame-step="1"]':next,'.project-thumbs':filmstrip,'#review-controls':controls,'#feedback-panel':feedback};
+ const container={querySelector:s=>parts[s],querySelectorAll:()=>thumbs};
+ const context={window:{},esc:String,document:{addEventListener(){}}};
+ runInNewContext(readFileSync(join(__dirname,'dist/review-layout.js'),'utf8'),context);
+ const a={type:'board',frames:Array.from({length:3},(_,i)=>({title:'Scene '+(i+1),available:true,url:'/scene-'+i+'.png',path:'scene-'+i+'.png',speech:'Line '+i}))};
+ assert.equal(context.window.ReviewLayout.updateFrame(container,a,2),true);
+ assert.match(media.innerHTML,/scene-2.png/);assert.match(notes.innerHTML,/Scene 3/);assert.equal(position.textContent,'3 / 3 · Scene');
+ assert.equal(next.disabled,true);assert.equal(previous.disabled,false);assert.equal(details.open,true);
+ assert.deepEqual(thumbs.map(t=>t.attributes['aria-pressed']),['false','false','true']);
+ assert.equal(container.querySelector('.project-thumbs'),filmstrip);assert.equal(filmstrip.scrollLeft,340);assert.equal(filmstrip.overview,true);
+ assert.equal(container.querySelector('#review-controls'),controls);assert.equal(feedback.draft,'Keep my scene note');
+ assert.equal(context.window.ReviewLayout.updateFrame(container,a,0),true);assert.equal(previous.disabled,true);
+ assert.equal(context.window.ReviewLayout.updateFrame(container,a,99),false);
+});
