@@ -1,4 +1,18 @@
-# Current release validation — 0.1.0-beta.2 (2026-10-28)
+# Current release validation — 0.1.0-beta.3 (2026-10-31)
+
+- 125 Python tests and 51 dependency-free Node UI tests pass locally and in a separately extracted, source-only installation. JavaScript syntax, exact committed source, version/tag consistency and empty starter seed checks pass. The release keeps the renderer and dependency pins unchanged.
+- Full fresh setup installed the hashed core and optional Apple Silicon transcription dependencies. pip check and MLX Whisper/Pillow/certifi imports passed. The initial project/reference/technique seeds were empty. Package and browser caches on this same machine were reused; this is not an independent-machine or fresh-assistant pilot.
+- The fresh installation completed a synthetic 2.4-second audio/video assembly and a separate 5-second 1080×1920 HyperFrames render. Source media was unchanged, durations/streams passed, and an actual decoded render frame was visually inspected. This does not test human take selection, word accuracy or audible creative quality.
+- Populated beta.2 → beta.3 Git and ZIP upgrade rehearsals each preserved hashes for 21 owner files: raw/exported/reference media, projects, a source-pinned technique and evidence, settings, original/versioned scripts, approvals, exact feedback links, borrowing notes, editor copies/sessions and local configuration. Existing links and the technique remained readable. A local README customization was detected and reconciled rather than overwritten.
+- New feedback edit/delete/restore actions were exercised only in disposable fixtures, preserving note identity, prior wording and copied content revisions. Source rollback retained the newer correction history and owner data created after upgrading. Older interfaces do not understand deletion markers; docs/UPDATING.md explains the limitation before using old feedback-copy controls.
+- The approved browser review covered saved-note corrections/history, stale-window protection and a 33-scene storyboard with long feedback. The scene strip stays under the preview, notes retain their reading position and later selections reveal horizontally. Static 390px/820px layout fixtures were inspected; no physical-device validation is claimed.
+- Source export remains an explicit 113-file allowlist with empty examples. Owner projects, catalogs, techniques, previews, feedback, media, credentials, journals and runtime evidence are excluded. Production owner records and media fingerprints are checked separately from test fixtures. Required CI covers Linux/macOS Python 3.11/3.13, Node UI/syntax/source export checks and current npm/core/speech audits.
+
+This is the public launch beta. Broader real-media workflows, fresh assistant sessions and other-platform compatibility remain pilot coverage; full media checks here target Apple Silicon macOS. See docs/PILOT.md. The historical records below retain their original scope and do not supersede this release validation.
+
+---
+
+# Previous release validation — 0.1.0-beta.2 (2026-10-28)
 
 - 118 Python unit tests and 42 Node UI tests pass locally and in a clean source-only installation. New release regressions reject version/lock/install-tag drift and populated starter seeds. Setup regressions preserve populated owner records, raw/exported media, reference notes, feedback/links, scripts, approvals, local source and .env while creating only missing registries.
 - An exact 113-source-file preflight export passed scanning and was installed in a fresh directory on this Apple Silicon Mac with the hashed optional speech packages. First-use projects/references/techniques were empty. Full synthetic smoke produced a 2.4s audio/video assembly with its generated original unchanged and a separate 5s1080×1920 HyperFrames render. The encoded sample frame was inspected. pip check and speech/Pillow/certifi imports passed. Package/browser caches on the same machine were reused; this is not an independent-machine pilot or real speech/listening assessment.
@@ -109,3 +123,17 @@ Project-starter checks cover optional file locations, plain chat copy, spoken-cu
 ## UX V26 local preview
 
 Checks cover optional labels, project-only notes in previews/cards, zero and exact technique timestamps, manual cover-image ranges, draft/reload persistence, source-window validation, stale-source note review and X/Escape navigation. Native disposable checks verify both directions of note editing, one combined copied request and retained source/selection state. Narrow-screen layout and the actual production UI are inspected without saving production notes or approvals. Owner fingerprints and an exact clean source-only export are recorded separately.
+
+
+## Pending review: feedback history and scene navigation — 2026-10-31
+
+125 Python tests (including20 feedback persistence/HTTP checks) and49 dependency-free Node UI tests pass locally. New regressions cover correction histories, applied-note preservation, idempotent deletion/restore, stale-window changes, exact copied content revisions, legacy selections, newest-first display, per-note correction drafts and persistent storyboard controls. All JavaScript syntax, registry, source-seed and whitespace checks pass. No renderer or dependency pins changed.
+
+Disposable native browser checks exercised inline edit/save, delete, reload and recovery from All saved notes; an older version retained its Applied in V02 note/link. Two tabs verified that a stale correction is preserved and must be compared with the latest saved note before replacing it. Scene15→16 retained page scrollY1006; the scene strip advanced only to reveal the clicked item, and overview remained open on another selection. Real owner views were inspected read-only; six applied notes are visible on the original spoken cut, with a subtle olive focus border/glow.80 owner metadata files are fingerprinted unchanged. These are local UI checks, not independent-device/media validation.
+
+The public change remains on a feature PR for user review. No merge, tag or numbered release is included in this task. Feedback schema1 receives optional history/updated_at/deleted_at fields only on explicit actions, with no migration or seed replacement. Preserve these fields and copied-link records on upgrades and rollback; older interfaces do not understand deletion markers.
+
+
+### Storyboard layout follow-up — pending PR review
+
+51 Node UI tests pass after adding per-version saved-note scroll retention/new-save reset and horizontal-only active-thumbnail reveal regressions. JavaScript syntax, whitespace and source-seed checks pass. On the actual33-scene board with9saved notes, the scene strip moved from about1449px below the preview to68px below it; the page shortened from2826px to1580px. The list retains its1031px reading position between scenes; choosing scene31 in overview and returning to filmstrip reveals that exact selection without horizontal page overflow. Native390px/820px static viewport fixtures confirm the strip precedes details/feedback on narrow screens. These are local layout checks, not physical-device validation. Owner records remain unchanged.

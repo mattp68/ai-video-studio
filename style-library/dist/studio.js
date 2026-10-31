@@ -120,11 +120,19 @@ window.Studio=(()=>{
   }
  }
  function showArtifact(a,index=0,update=true){
+  const sameStoryboard=activeArtifact?.id===a.id&&!!a.frames;
   window.ProjectFeedback?.retain();window.ProjectScript?.retain();pause();request++;activeArtifact=a;
   frameIndex=Math.max(0,Math.min((a.frames||[]).length-1,index));
+  const container=$('#project-artifact');
+  if(sameStoryboard&&ReviewLayout.updateFrame(container,a,frameIndex)){
+   window.ProjectFeedback?.render(activeProject,a,frameIndex);
+   if(update)history.replaceState(null,'',projectHash(activeProject,a,frameIndex));
+   return;
+  }
   stageChoices.set(activeProject.id+'/'+ReviewLayout.stage(activeProject,a),a.id);
   $('#review-navigation').innerHTML=ReviewLayout.navigation(activeProject,a);
-  const container=$('#project-artifact');container.innerHTML=ReviewLayout.content(activeProject,a,frameIndex);
+  container.innerHTML=ReviewLayout.content(activeProject,a,frameIndex);
+  if(a.frames)ReviewLayout.revealFrame(container);
   reviewControls();window.ProjectFeedback?.render(activeProject,a,frameIndex);window.ProjectTools?.mount(activeProject,a);window.ProjectScript?.mount(activeProject,a);
   if(a.available&&a.type==='document'){
    const token=request;fetch(a.url,{cache:'no-store'}).then(r=>{if(!r.ok)throw Error();return r.text();}).then(t=>{if(token===request)container.querySelector('.project-document').innerHTML=ReviewLayout.readable(t);}).catch(()=>{if(token===request)container.querySelector('.project-document').textContent='These notes could not load. Ask your assistant to relink this exact file.';});
@@ -150,7 +158,7 @@ window.Studio=(()=>{
   if(e.target.closest('[data-load-update]')){if(window.ProjectFeedback?.hasDraft()){notify('Save your feedback draft before loading updates.');return;}return route();}
   if(e.target.closest('[data-use-version]'))return copy(`Continue ${activeProject.title} from this saved version as the starting point: ${new URL(projectHash(activeProject,activeArtifact),location.href)}. Create a new revision and preserve approved files and history.`,e.target.closest('[data-use-version]'));
   if(e.target.closest('[data-enlarge-frame]'))return enlargeFrame();
-  if(e.target.closest('[data-overview]')){const grid=$('.project-thumbs');grid.classList.toggle('is-overview');e.target.closest('[data-overview]').textContent=grid.classList.contains('is-overview')?'Back to filmstrip':`See all ${activeArtifact.frames.length} ${activeArtifact.type==='carousel'?'slides':'scenes'}`;return;}
+  if(e.target.closest('[data-overview]')){const grid=$('.project-thumbs');grid.classList.toggle('is-overview');e.target.closest('[data-overview]').textContent=grid.classList.contains('is-overview')?'Back to filmstrip':`See all ${activeArtifact.frames.length} ${activeArtifact.type==='carousel'?'slides':'scenes'}`;if(!grid.classList.contains('is-overview'))ReviewLayout.revealFrame($('#project-artifact'));return;}
   const note=e.target.closest('[data-project-note]');if(note){const box=$('#readable-project-note'),p=activeProject;box.hidden=false;box.textContent='Loading…';fetch(p.source_notes[Number(note.dataset.projectNote)].url,{cache:'no-store'}).then(r=>{if(!r.ok)throw Error();return r.text();}).then(t=>{if(activeProject===p)box.innerHTML=ReviewLayout.readable(t);}).catch(()=>box.textContent='This note could not load. The original files remain available below.');return;}
 
   const review=e.target.closest('[data-review-action]');if(review)return saveReview(review.dataset.reviewAction);

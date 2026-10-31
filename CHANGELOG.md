@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.1.0-beta.3 — Public Launch — 2026-10-31
+
+- Edit saved project feedback inline, or delete with Undo and persistent recovery in All saved notes. Prior wording and applied history remain attached to the original version.
+- Show applied feedback on earlier cuts, storyboards and edits, with links to the resulting version when registered. Order notes by newest save; chat copies include only open notes and detect subsequent edits.
+- Keep the scene strip directly below its preview, with saved feedback in a separate scrollable list. Retain note reading positions and reveal the selected scene when returning from the overview.
+- Browse storyboard scenes without jumping to the page header or resetting the scene strip/overview. Keep scene drafts and keyboard focus.
+- Replace the heavy feedback field outline with a subtle olive focus border and glow, including forced-color keyboard support.
+
+### Upgrading from beta.2
+
+Follow docs/UPDATING.md in your existing installation. Apply the reviewed source release and retain your projects, videos, references, techniques, scripts, settings and feedback. There is no destructive migration; feedback history/deletion fields are added only when used. Back up first and retain local source customizations. Older interfaces do not understand deleted-note markers, so follow the rollback guidance before using an older version’s feedback-copy controls.
+
+This is the public launch beta for Monday, November 2. The Mac-first validation scope remains; no dependency or renderer upgrade is included.
+
 ## 0.1.0-beta.2 — 2026-10-28
 
 - Start projects from one modal with retained drafts, optional recorded scripts and videos/technique inspiration. Preview and selection cards share project-only notes and timestamps. X/Escape return one level at a time.

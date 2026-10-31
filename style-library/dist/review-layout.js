@@ -60,21 +60,46 @@ window.ReviewLayout = (() => {
   function heading(p, a) {
     return `<div class="artifact-heading"><div><p class="eyebrow">${h(badge(p, a))}</p><h3>${h(a.label)}${a.version ? ' · ' + h(a.version) : ''}</h3></div>${downloads(a)}</div>`;
   }
+  function frameMedia(f) {
+    return !f.available ? '<p>This scene is unavailable.</p>' : f.media_type === 'video' ? `<video controls muted playsinline preload="metadata" src="${h(f.url)}" aria-label="${h(f.title)}"></video>` : `<button class="enlarge-frame" data-enlarge-frame aria-label="Enlarge ${h(f.title)}"><img src="${h(f.url)}" alt="${h(f.title)}"><span>Enlarge ↗</span></button>`;
+  }
+  function frameNotes(a, f) { return `<p class="frame-timing">${h(f.timing || '')}</p><h4 class="frame-title">${h(f.title)}</h4>${f.speech ? `<div class="frame-note"><h5>Spoken line</h5><p>${h(f.speech)}</p></div>` : ''}${f.copy ? `<div class="frame-note"><h5>On screen</h5><p>${h(f.copy)}</p></div>` : ''}<details class="scene-details"><summary>Movement & sound</summary>${[['Movement', f.motion], ['Sound', f.sound]].filter(([, v]) => v).map(([label, value]) => `<div class="frame-note"><h5>${label}</h5><p>${h(value)}</p></div>`).join('')}<p>${h(a.description || '')}</p>${f.available ? `<a href="${h(f.url)}" download="${h(f.path.split('/').pop())}">Download this ${a.type === 'carousel' ? 'slide' : 'frame'} ↓</a>` : ''}</details>`; }
+  function revealFrame(container) {
+    const strip = container.querySelector('.project-thumbs'), selected = container.querySelector('[data-project-frame][aria-pressed="true"]');
+    if (!strip || !selected || strip.classList.contains('is-overview')) return;
+    const bounds = strip.getBoundingClientRect(), item = selected.getBoundingClientRect();
+    const delta = item.left < bounds.left ? item.left - bounds.left - 4 : item.right > bounds.right ? item.right - bounds.right + 4 : 0;
+    if (delta) strip.scrollLeft += delta;
+  }
+  function updateFrame(container, a, index) {
+    const media = container.querySelector('[data-scene-media]'), notes = container.querySelector('[data-scene-notes]');
+    if (!media || !notes || !a.frames?.[index]) return false;
+    const expanded = notes.querySelector('.scene-details')?.open;
+    media.innerHTML = frameMedia(a.frames[index]);
+    notes.innerHTML = frameNotes(a, a.frames[index]);
+    const details = notes.querySelector('.scene-details'); if (details) details.open = !!expanded;
+    container.querySelector('[data-scene-position]').textContent = `${index + 1} / ${a.frames.length} · ${a.type === 'carousel' ? 'Slide' : 'Scene'}`;
+    container.querySelector('[data-frame-step="-1"]').disabled = index === 0;
+    container.querySelector('[data-frame-step="1"]').disabled = index === a.frames.length - 1;
+    container.querySelectorAll('[data-project-frame]').forEach(button => button.setAttribute('aria-pressed', String(Number(button.dataset.projectFrame) === index)));
+    revealFrame(container);
+    return true;
+  }
   function content(p, a, frameIndex) {
     const title = heading(p, a);
     const earlier = a.id !== p.primary_artifact ? `<div class="viewing-saved"><span>You’re viewing ${h(a.version || a.label)}. ${h(badge(p, a))}.</span><button class="text-button" data-back-current>Back to latest</button>${a.type === 'video' ? '<button class="text-button" data-use-version>Use as a starting point</button>' : ''}</div>` : '';
     if (!a.available) return title + earlier + '<p class="project-notice">This saved file is unavailable. Ask your assistant to relink this exact version.</p>';
+    const thumbs = a.frames ? `<div class="storyboard-toolbar"><button class="text-button" data-overview>See all ${a.frames.length} ${a.type === 'carousel' ? 'slides' : 'scenes'}</button></div><div class="project-thumbs" aria-label="Choose a scene">${a.frames.map((f, i) => `<button data-project-frame="${i}" aria-label="Scene ${i + 1}: ${h(f.title)}" aria-pressed="${i === frameIndex}">${f.available && f.media_type !== 'video' ? `<img src="${h(f.url)}" alt="" loading="lazy">` : '<span class="thumb-video">▶</span>'}<span>${String(i + 1).padStart(2, '0')}</span><small>${h(f.title)}</small></button>`).join('')}</div>` : '';
     let media;
     if (a.type === 'video') {
       media = `<div class="artifact-stage video-stage"><video controls muted playsinline preload="metadata" ${a.id === p.primary_artifact && p.cover ? `poster="${h(p.cover)}"` : ''} src="${h(a.url)}" aria-label="${h(p.title + ' ' + a.label + ' ' + (a.version || ''))}"></video></div>`;
     } else if (a.frames) {
-      const f = a.frames[frameIndex];
-      media = `<div><div class="artifact-stage frame-stage ${p.format === 'presentation' ? 'landscape-stage' : ''}">${!f.available ? '<p>This scene is unavailable.</p>' : f.media_type === 'video' ? `<video controls muted playsinline preload="metadata" src="${h(f.url)}" aria-label="${h(f.title)}"></video>` : `<button class="enlarge-frame" data-enlarge-frame aria-label="Enlarge ${h(f.title)}"><img src="${h(f.url)}" alt="${h(f.title)}"><span>Enlarge ↗</span></button>`}</div><div class="frame-navigation"><button data-frame-step="-1" aria-label="Previous scene" ${frameIndex === 0 ? 'disabled' : ''}>←</button><span>${frameIndex + 1} / ${a.frames.length} · ${a.type === 'carousel' ? 'Slide' : 'Scene'}</span><button data-frame-step="1" aria-label="Next scene" ${frameIndex === a.frames.length - 1 ? 'disabled' : ''}>→</button></div></div>`;
+      media = `<div class="storyboard-media"><div data-scene-media class="artifact-stage frame-stage ${p.format === 'presentation' ? 'landscape-stage' : ''}">${frameMedia(a.frames[frameIndex])}</div><div class="frame-navigation"><button data-frame-step="-1" aria-label="Previous scene" ${frameIndex === 0 ? 'disabled' : ''}>←</button><span data-scene-position>${frameIndex + 1} / ${a.frames.length} · ${a.type === 'carousel' ? 'Slide' : 'Scene'}</span><button data-frame-step="1" aria-label="Next scene" ${frameIndex === a.frames.length - 1 ? 'disabled' : ''}>→</button></div>${thumbs}</div>`;
     } else media = '<article class="readable-note project-document">Loading the saved notes…</article>';
     const f = a.frames?.[frameIndex];
-    const notes = f ? `<p class="frame-timing">${h(f.timing || '')}</p><h4 class="frame-title">${h(f.title)}</h4>${f.speech ? `<div class="frame-note"><h5>Spoken line</h5><p>${h(f.speech)}</p></div>` : ''}${f.copy ? `<div class="frame-note"><h5>On screen</h5><p>${h(f.copy)}</p></div>` : ''}<details class="scene-details"><summary>Movement & sound</summary>${[['Movement', f.motion], ['Sound', f.sound]].filter(([, v]) => v).map(([label, value]) => `<div class="frame-note"><h5>${label}</h5><p>${h(value)}</p></div>`).join('')}<p>${h(a.description || '')}</p>${f.available ? `<a href="${h(f.url)}" download="${h(f.path.split('/').pop())}">Download this ${a.type === 'carousel' ? 'slide' : 'frame'} ↓</a>` : ''}</details>` : `<h4 class="what-changed">${a.id === p.primary_artifact ? 'What’s ready to review' : 'About this version'}</h4><p class="artifact-description">${h(a.description || '')}</p>`;
-    const thumbs = a.frames ? `<div class="storyboard-toolbar"><button class="text-button" data-overview>See all ${a.frames.length} ${a.type === 'carousel' ? 'slides' : 'scenes'}</button></div><div class="project-thumbs" aria-label="Choose a scene">${a.frames.map((f, i) => `<button data-project-frame="${i}" aria-label="Scene ${i + 1}: ${h(f.title)}" aria-pressed="${i === frameIndex}">${f.available && f.media_type !== 'video' ? `<img src="${h(f.url)}" alt="" loading="lazy">` : '<span class="thumb-video">▶</span>'}<span>${String(i + 1).padStart(2, '0')}</span><small>${h(f.title)}</small></button>`).join('')}</div>` : '';
-    return title + earlier + `<div class="artifact-layout ${p.format === 'presentation' ? 'landscape-artifact' : ''}">${media}<div class="artifact-notes">${notes}<div id="review-controls"></div><section id="feedback-panel"></section></div></div>${thumbs}`;
+    const notes = f ? `<div data-scene-notes>${frameNotes(a, f)}</div>` : `<h4 class="what-changed">${a.id === p.primary_artifact ? 'What’s ready to review' : 'About this version'}</h4><p class="artifact-description">${h(a.description || '')}</p>`;
+
+    return title + earlier + `<div class="artifact-layout ${a.frames ? 'storyboard-layout' : ''} ${p.format === 'presentation' ? 'landscape-artifact' : ''}">${media}<div class="artifact-notes">${notes}<div id="review-controls"></div><section id="feedback-panel"></section></div></div>`;
   }
   document.addEventListener('click', event => {
     document.querySelectorAll('.version-picker[open]').forEach(menu => {if(!menu.contains(event.target))menu.open=false;});
@@ -84,5 +109,5 @@ window.ReviewLayout = (() => {
     const menu=document.querySelector('.version-picker[open]');
     if(menu){menu.open=false;menu.querySelector('summary').focus();event.preventDefault();event.stopPropagation();}
   });
-  return {stage, labels, versions, navigation, details, heading, content, readable};
+  return {stage, labels, versions, navigation, details, heading, content, readable, updateFrame, revealFrame};
 })();

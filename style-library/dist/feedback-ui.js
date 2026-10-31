@@ -1,17 +1,27 @@
 /* Local review notes, independent of assistant accounts and approval decisions. */
 window.ProjectFeedback = (() => {
   let target = null, data = null, loading = 0, busy = false;
-  const drafts = new Map(), saves = new Map();
+  const drafts = new Map(), saves = new Map(), changes = new Map(), editDrafts = new Map(), noteScroll = new Map();
+  let editing = null, deleted = null, notice = '';
   async function reply(response) {
     try { return await response.json(); } catch { throw Error('The studio could not load feedback. Check its connection and try again.'); }
   }
   const key = t => [t.project.id, t.artifact.id, t.frame ?? ''].join('/');
   const timeLabel = t => { const ticks = Math.round(t * 100); return `${Math.floor(ticks / 6000)}:${((ticks % 6000) / 100).toFixed(2).padStart(5, '0')}`; };
-  const openNotes = () => (data?.notes || []).filter(n => n.status === 'open');
-  const versionNotes = () => openNotes().filter(n => n.artifact_id === target?.artifact.id);
+  const newest = notes => notes.slice().sort((a, b) => String(b.updated_at || b.created_at || '').localeCompare(String(a.updated_at || a.created_at || '')));
+  const visibleNotes = () => newest((data?.notes || []).filter(n => !n.deleted_at));
+  const openNotes = () => visibleNotes().filter(n => n.status === 'open');
+  const versionNotes = () => visibleNotes().filter(n => n.artifact_id === target?.artifact.id);
+  const dateLabel = value => { const d = new Date(value); return Number.isNaN(d.valueOf()) ? '' : d.toLocaleString(undefined, {month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'}); };
+  const versionKey = t => t.project.id + '/' + t.artifact.id;
   function retain() {
+    const list = document.querySelector('.feedback-note-list');
+    if (target && list && Number.isFinite(list.scrollTop)) noteScroll.set(versionKey(target), list.scrollTop);
     const text = document.querySelector('#feedback-text');
     if (target && text) drafts.set(key(target), {text: text.value, time: target.time});
+    const edit = document.querySelector('[data-feedback-edit-text]');
+    if (editing && edit) editing.text = edit.value;
+    if (editing) editDrafts.set(editing.project + '/' + editing.id, {...editing});
   }
   function contextLabel(t) {
     return t.frame ? `${t.artifact.type === 'carousel' ? 'Slide' : 'Scene'} ${t.frame}` :
@@ -23,13 +33,43 @@ window.ProjectFeedback = (() => {
     if (n.time !== null) q.set('time', n.time);
     return '#' + q;
   }
-  function noteCards(notes) {
-    return notes.map(n => `<article${data?.selection?.note_ids.includes(n.id) ? ' class="linked-feedback-note"' : ''}><a href="${esc(noteLink(n))}">${esc(n.frame ? `Scene ${n.frame}` : n.time !== null ? timeLabel(n.time) : 'Whole version')}</a><p>${esc(n.text)}</p></article>`).join('');
+  function application(n) {
+    if (n.status === 'open') return '<span class="feedback-badge">Open</span>';
+    const applied = n.applied_in, id = applied?.artifact_id;
+    const label = typeof applied === 'string' ? applied : applied?.version;
+    const text = 'Applied' + (label ? ' in ' + label : '');
+    const found = target.project.artifacts?.some(a => a.id === id);
+    return found ? `<a class="feedback-badge applied" href="${esc('#' + new URLSearchParams({project: target.project.id, artifact: id}))}" data-close-feedback>${esc(text)}</a>` : `<span class="feedback-badge applied">${esc(text)}</span>`;
+  }
+  function noteCards(notes, all = false) {
+    return notes.map(n => {
+      const edit = editing?.project === target.project.id && editing.id === n.id && editing.all === all;
+      const conflict = edit && editing.revision !== n.revision;
+      const history = (n.history || []).filter(e => e.before?.text).slice().reverse();
+      return `<article data-feedback-note="${esc(n.id)}"${data?.selection?.note_ids.includes(n.id) ? ' class="linked-feedback-note"' : ''}>
+        <div class="feedback-note-heading"><a href="${esc(noteLink(n))}" data-close-feedback>${all ? esc((n.label || '') + ' ' + (n.version || '')) + ' · ' : ''}${esc(n.frame ? `Scene ${n.frame}` : n.time !== null ? timeLabel(n.time) : 'Whole version')}</a>${n.deleted_at ? '<span class="feedback-badge">Deleted</span>' : application(n)}</div>
+        ${edit ? `<label class="sr-only" for="feedback-edit-text">Edit saved feedback</label><textarea id="feedback-edit-text" data-feedback-edit-text maxlength="2000" rows="3" ${busy ? 'disabled' : ''}>${esc(editing.text)}</textarea>${n.status !== 'open' ? '<p class="feedback-note-meta">Editing this note keeps its applied status. Add a new note to request another change.</p>' : ''}${conflict ? `<div class="feedback-conflict"><p>This note changed. Latest saved text:</p><p>${esc(n.text)}</p><button class="text-button" data-feedback-rebase>Use my text instead</button></div>` : ''}<div class="feedback-note-actions"><button class="primary" data-feedback-change="edit" data-note-id="${esc(n.id)}" ${busy || conflict ? 'disabled' : ''}>Save changes</button><button class="secondary" data-feedback-cancel ${busy ? 'disabled' : ''}>Cancel</button></div>` : `<p>${esc(n.text)}</p><div class="feedback-note-actions">${n.deleted_at ? `<button class="text-button" data-feedback-change="restore" data-note-id="${esc(n.id)}" ${busy ? 'disabled' : ''}>Restore</button>` : `<button class="text-button" data-feedback-edit="${esc(n.id)}" data-note-scope="${all ? 'all' : 'version'}" ${busy ? 'disabled' : ''}>Edit</button><button class="text-button feedback-delete" data-feedback-change="delete" data-note-id="${esc(n.id)}" ${busy ? 'disabled' : ''}>Delete</button>`}</div>`}
+        <span class="feedback-note-meta">${esc(dateLabel(n.updated_at || n.created_at))}${n.updated_at ? ' · Edited' : ''}</span>
+        ${history.length ? `<details class="feedback-note-history"><summary>Note history (${history.length})</summary>${history.map(e => `<div><span>${esc(e.action === 'edit' ? 'Before editing' : e.action === 'delete' ? 'Before deletion' : 'Before restoring')} · ${esc(dateLabel(e.at))}</span><p>${esc(e.before.text)}</p>${e.before.status !== 'open' ? application(e.before) : ''}</div>`).join('')}</details>` : ''}
+      </article>`;
+    }).join('');
+  }
+  function paintList() {
+    const dialog = document.querySelector('#feedback-dialog');
+    if (!dialog?.open || !target || !data) return;
+    const notes = visibleNotes(), removed = newest(data.notes.filter(n => n.deleted_at));
+    dialog.querySelector('.feedback-all-scope').textContent = `${target.project.title} · ${notes.length} saved notes across all versions · ${openNotes().length} open.`;
+    dialog.querySelector('.saved-feedback-list').innerHTML = (notes.length ? noteCards(notes, true) : '<p>No saved notes yet. Add one beside a preview.</p>') + (removed.length ? `<details class="feedback-deleted"><summary>Deleted notes (${removed.length})</summary>${noteCards(removed, true)}</details>` : '');
+    dialog.querySelector('[data-feedback-copy]').disabled = busy || !openNotes().length;
+    dialog.querySelector('[data-feedback-copy]').textContent = 'Copy open project feedback for chat';
+    const status = dialog.querySelector('.feedback-dialog-status'); status.textContent = notice;
+    if (notice.includes('Refresh notes')) { const refresh = document.createElement('button'); refresh.className = 'text-button'; refresh.dataset.feedbackReload = ''; refresh.textContent = 'Refresh notes'; status.append(document.createElement('br'), refresh); }
   }
   function paint() {
     const box = document.querySelector('#feedback-panel');
     if (!box || !target) return;
-    const notes = openNotes(), current = versionNotes(), attached = target.time !== null;
+    const active = document.activeElement, field = ['feedback-text', 'feedback-edit-text'].includes(active?.id) ? {id: active.id, start: active.selectionStart, end: active.selectionEnd} : null;
+    const notes = visibleNotes(), current = versionNotes(), pending = current.filter(n => n.status === 'open'), attached = target.time !== null;
     const version = target.artifact.version || target.artifact.label;
     const linked = data?.selection, completed = linked ? data.notes.filter(n => linked.note_ids.includes(n.id) && n.status !== 'open').length : 0;
     box.innerHTML = `<div class="feedback-heading"><h4>Your feedback</h4>
@@ -40,15 +80,24 @@ window.ProjectFeedback = (() => {
       <textarea id="feedback-text" maxlength="2000" rows="3" ${busy ? 'disabled' : ''} placeholder="What would you like to change?">${esc(drafts.get(key(target))?.text || '')}</textarea>
       <div class="feedback-actions">${target.artifact.type === 'video' ? `<button class="secondary moment-button" data-feedback-moment ${busy ? 'disabled' : ''} title="Add or replace the timestamp using the video’s current position">Add timestamp</button>` : ''}
       <button class="primary" data-feedback-save ${!data?.contexts?.[target.artifact.id] || busy ? 'disabled' : ''}>${busy ? 'Saving…' : 'Save feedback'}</button></div>
-      <p id="feedback-status" role="status">${data ? 'Save your note here, then copy feedback to your editing chat.' : 'Loading saved feedback…'}</p>
-      <div class="feedback-notes" aria-label="Saved notes on this version">${current.length ? `<h5>Saved on this version (${current.length})</h5>${noteCards(current)}` : ''}</div>
-      ${current.length ? `<section class="feedback-handoff" aria-label="Send saved feedback to your editing chat"><div><h5>Ready for your editing chat</h5><p><strong>${current.length} saved ${current.length === 1 ? 'note' : 'notes'} · ${esc(version)}</strong></p></div><button class="primary" data-feedback-copy="version" ${busy ? 'disabled' : ''}>Copy feedback for chat</button><p>Copies a request for these exact notes. Paste it into your editing chat to apply them.</p><p class="feedback-copy-status" role="status"></p></section>` : ''}`;
+      <button class="text-button feedback-refresh" data-feedback-reload ${busy ? 'disabled' : ''}>Refresh notes</button>
+      <p id="feedback-status" role="status">${esc(notice || (data ? 'Save your note here, then copy feedback to your editing chat.' : 'Loading saved feedback…'))}</p>
+      ${deleted && data?.notes.some(n => n.id === deleted && n.deleted_at) ? `<p class="feedback-undo">Note deleted. <button class="text-button" data-feedback-change="restore" data-note-id="${esc(deleted)}" ${busy ? 'disabled' : ''}>Undo</button></p>` : ''}
+      <div class="feedback-notes" aria-label="Saved notes on this version">${current.length ? `<h5 id="version-feedback-heading">Saved on this version (${current.length})</h5><div class="feedback-note-list" role="region" aria-labelledby="version-feedback-heading" tabindex="0">${noteCards(current)}</div>` : ''}</div>
+      ${pending.length ? `<section class="feedback-handoff" aria-label="Send saved feedback to your editing chat"><div><h5>Ready for your editing chat</h5><p><strong>${pending.length} open ${pending.length === 1 ? 'note' : 'notes'} · ${esc(version)}</strong></p></div><button class="primary" data-feedback-copy="version" ${busy ? 'disabled' : ''}>Copy feedback for chat</button><p>Copies a request for these exact open notes. Paste it into your editing chat to apply them.</p><p class="feedback-copy-status" role="status"></p></section>` : ''}`;
+    paintList();
+    const list = document.querySelector('.feedback-note-list');
+    if (list) list.scrollTop = noteScroll.get(versionKey(target)) || 0;
+    if (field) { const next = document.querySelector('#' + field.id); if (next && !next.disabled) { next.focus({preventScroll: true}); if (typeof field.start === 'number') next.setSelectionRange(field.start, field.end); } }
   }
   async function render(project, artifact, frameIndex = 0) {
     retain();
+    const sameProject = target?.project.id === project.id;
+    if (target?.artifact.id !== artifact.id || target?.frame !== (artifact.frames ? frameIndex + 1 : null)) notice = '';
+    if (!sameProject) { editing = null; deleted = null; notice = ''; data = null; }
+    if (editing && !editing.all && data?.notes.find(n => n.id === editing.id)?.artifact_id !== artifact.id) editing = null;
     target = {project, artifact, frame: artifact.frames ? frameIndex + 1 : null, time: null};
     target.time = drafts.get(key(target))?.time ?? null;
-    data = null;
     const token = ++loading;
     paint();
     try {
@@ -56,10 +105,10 @@ window.ProjectFeedback = (() => {
       const selection = params.get('project') === project.id ? params.get('feedback') : null;
       const response = await fetch('/feedback?project=' + encodeURIComponent(project.id) + (selection !== null ? '&selection=' + encodeURIComponent(selection) : ''), {cache: 'no-store'});
       const result = await reply(response);
-      if (!response.ok) { const error = Error(result.error || 'Saved notes could not load. Your draft is still here.'); error.selection = selection !== null; throw error; }
       if (token !== loading) return;
-      if (result.selection?.artifact_id && result.selection.artifact_id !== artifact.id) { const error = Error('This feedback link refers to a different version. Use the original link or show this project’s feedback.'); error.selection = true; throw error; }
-      retain(); data = result; paint();
+      if (!response.ok) { data = null; paint(); const error = Error(result.error || 'Saved notes could not load. Your draft is still here.'); error.selection = selection !== null; throw error; }
+      if (result.selection?.artifact_id && result.selection.artifact_id !== artifact.id) { data = null; paint(); const error = Error('This feedback link refers to a different version. Use the original link or show this project’s feedback.'); error.selection = true; throw error; }
+      retain(); data = result; if (notice.includes('Use Refresh notes')) notice = 'Notes refreshed. Review the latest text before saving your correction.'; paint();
     } catch (error) {
       if (token === loading && document.querySelector('#feedback-status')) {
         const status = document.querySelector('#feedback-status');
@@ -101,20 +150,20 @@ window.ProjectFeedback = (() => {
     const signature = JSON.stringify({...body, request_id: null});
     if (saves.get(token)?.signature === signature) body = saves.get(token).body;
     else saves.set(token, {signature, body});
-    busy = true;
+    ++loading; busy = true; notice = '';
     paint();
     document.querySelector('#feedback-status').textContent = 'Saving…';
     try {
       const response = await fetch('/feedback', {method: 'POST', headers: {'Content-Type': 'application/json', 'X-Studio-Action': 'feedback'}, body: JSON.stringify(body)});
       const result = await reply(response);
       if (!response.ok) { const error = Error(result.error || 'Feedback could not be saved. Your draft is still here.'); error.conflict = response.status === 409; throw error; }
-      drafts.delete(token); saves.delete(token); busy = false;
+      drafts.delete(token); saves.delete(token); noteScroll.set(versionKey(destination), 0); busy = false;
       if (target === destination) {
         target.time = null; data = result; paint();
         const status = document.querySelector('#feedback-status');
         status.textContent = `✓ Feedback saved · ${position}. Use Copy feedback for chat when you’re ready.`;
         status.classList.add('feedback-saved');
-      } else { retain(); paint(); }
+      } else { retain(); if (target?.project.id === destination.project.id) data = result; paint(); }
       notify('Feedback saved. Copy it to your editing chat when you’re ready.');
     } catch (error) {
       busy = false;
@@ -133,20 +182,54 @@ window.ProjectFeedback = (() => {
   }
   function list() {
     if (!data || !target) return;
-    const dialog = document.querySelector('#feedback-dialog'), notes = openNotes();
-    dialog.querySelector('.feedback-all-scope').textContent = `${target.project.title} · ${notes.length} saved, unapplied ${notes.length === 1 ? 'note' : 'notes'} across all versions.`;
-    dialog.querySelector('.saved-feedback-list').innerHTML = notes.length ? notes.map(n => `<article${data?.selection?.note_ids.includes(n.id) ? ' class="linked-feedback-note"' : ''}><a href="${esc(noteLink(n))}" data-close-feedback>${esc(n.label)} ${esc(n.version)} · ${esc(n.frame ? `Scene ${n.frame}` : n.time !== null ? timeLabel(n.time) : 'Whole version')}</a><p>${esc(n.text)}</p></article>`).join('') : '<p>No saved notes yet. Add one beside a preview.</p>';
-    dialog.querySelector('[data-feedback-copy]').disabled = !notes.length;
-    dialog.querySelector('[data-feedback-copy]').textContent = 'Copy all project feedback for chat';
-    dialog.querySelector('.feedback-dialog-status').textContent = '';
-    dialog.showModal();
+    retain();
+    if (editing && !editing.all) editing.all = true;
+    const dialog = document.querySelector('#feedback-dialog');
+    dialog.showModal(); paint();
+  }
+  function beginEdit(id, all) {
+    if (busy || !data || !target) return;
+    retain();
+    const n = data.notes.find(n => n.id === id && !n.deleted_at);
+    if (!n) return;
+    editing = editDrafts.get(target.project.id + '/' + id) || {id, project: target.project.id, text: n.text, revision: n.revision, all};
+    editing.all = all; notice = ''; paint();
+    document.querySelector('[data-feedback-edit-text]')?.focus();
+  }
+  async function changeNote(action, id) {
+    if (busy || !target || !data) return;
+    retain();
+    const n = data.notes.find(n => n.id === id);
+    if (!n || (action === 'edit' && (!editing || !editing.text.trim() || editing.revision !== n.revision))) return;
+    const project = target.project.id;
+    let body = {project_id: project, note_id: id, revision: action === 'edit' ? editing.revision : n.revision, action, request_id: crypto.randomUUID(), ...(action === 'edit' ? {text: editing.text} : {})};
+    const signature = JSON.stringify({...body, request_id: null});
+    if (changes.has(signature)) body = changes.get(signature);
+    else changes.set(signature, body);
+    ++loading; busy = true; notice = 'Saving…'; paint();
+    try {
+      const response = await fetch('/feedback-note', {method: 'POST', headers: {'Content-Type': 'application/json', 'X-Studio-Action': 'feedback-note'}, body: JSON.stringify(body)});
+      const result = await reply(response);
+      if (!response.ok) throw Error(result.error || 'This note could not be changed. Your draft is preserved.');
+      changes.delete(signature);
+      if (target?.project.id === project) {
+        data = result;
+        if (action === 'edit' && n.artifact_id === target.artifact.id) noteScroll.set(versionKey(target), 0);
+        editDrafts.delete(project + '/' + id);
+        if (editing?.id === id) editing = null;
+        deleted = action === 'delete' ? id : deleted === id ? null : deleted;
+        notice = action === 'delete' ? 'Note deleted. You can undo it here or restore it from All saved notes.' : action === 'restore' ? 'Note restored.' : 'Changes saved.';
+      }
+    } catch (error) {
+      if (target?.project.id === project) notice = (error instanceof TypeError ? 'Could not reach your local studio. Your draft is preserved.' : error.message) + ' Use Refresh notes to review the latest saved text.';
+    } finally { busy = false; paint(); }
   }
   async function copyNotes(all = false, button = null) {
     if (!target || !data || busy || button?.disabled) return;
-    const destination = target, notes = all ? openNotes() : versionNotes();
+    const destination = target, notes = all ? openNotes() : versionNotes().filter(n => n.status === 'open');
     if (!notes.length) return;
     const project = target.project, version = target.artifact.version || target.artifact.label;
-    const body = {project_id: project.id, artifact_id: all ? null : target.artifact.id, note_ids: notes.map(n => n.id)};
+    const body = {project_id: project.id, artifact_id: all ? null : target.artifact.id, note_ids: notes.map(n => n.id), note_revisions: Object.fromEntries(notes.map(n => [n.id, n.content_revision]))};
     const status = document.querySelector(all ? '.feedback-dialog-status' : '.feedback-copy-status');
     if (button) button.disabled = true;
     if (status) status.textContent = 'Preparing your feedback link…';
@@ -179,6 +262,13 @@ window.ProjectFeedback = (() => {
     }
   }
   document.addEventListener('click', event => {
+    const edit = event.target.closest('[data-feedback-edit]');
+    if (edit) beginEdit(edit.dataset.feedbackEdit, edit.dataset.noteScope === 'all');
+    const change = event.target.closest('[data-feedback-change]');
+    if (change) changeNote(change.dataset.feedbackChange, change.dataset.noteId);
+    if (event.target.closest('[data-feedback-cancel]') && !busy) { retain(); if (editing) editDrafts.delete(editing.project + '/' + editing.id); editing = null; notice = ''; paint(); }
+    if (event.target.closest('[data-feedback-rebase]') && editing && !busy) { retain(); editing.revision = data.notes.find(n => n.id === editing.id)?.revision; notice = 'Your correction is ready to save.'; paint(); }
+    if (event.target.closest('[data-feedback-reload]') && target && !busy) render(target.project, target.artifact, (target.frame || 1) - 1);
     if (event.target.closest('[data-feedback-moment]')) moment();
     if (event.target.closest('[data-feedback-remove-moment]')) removeMoment();
     if (event.target.closest('[data-feedback-save]')) save();
@@ -187,7 +277,8 @@ window.ProjectFeedback = (() => {
     if (event.target.closest('[data-feedback-show-project]')) { const params = new URLSearchParams(location.hash.slice(1)); params.delete('feedback'); history.replaceState(null, '', '#' + params); window.Studio?.route(); }
     const copy = event.target.closest('[data-feedback-copy]');
     if (copy) copyNotes(copy.dataset.feedbackCopy === 'all', copy);
-    if (event.target.closest('[data-close-feedback]')) document.querySelector('#feedback-dialog').close();
+    if (event.target.closest('[data-close-feedback]')) { retain(); document.querySelector('#feedback-dialog').close(); if (editing) { editing.all = false; if (data?.notes.find(n => n.id === editing.id)?.artifact_id !== target?.artifact.id) editing = null; } paint(); }
   });
-  return {render, retain, moment, hasDraft: () => !!document.querySelector('#feedback-text')?.value.trim() || busy};
+  document.querySelector('#feedback-dialog')?.addEventListener?.('close', () => { retain(); if (editing) { editing.all = false; if (data?.notes.find(n => n.id === editing.id)?.artifact_id !== target?.artifact.id) editing = null; } paint(); });
+  return {render, retain, moment, hasDraft: () => !!document.querySelector('#feedback-text')?.value.trim() || !!editing || busy};
 })();

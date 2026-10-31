@@ -8,7 +8,7 @@ from project_index import public_index, get_file, get_asset
 from review_actions import apply_decision, ReviewError
 from security import registered_file, MEDIA, NOTES
 from reference_intake import save as save_reference, current as reference_state, visibility_state, set_visibility, IntakeError
-from feedback import save as save_feedback, current as feedback_state, save_link as save_feedback_link, FeedbackError
+from feedback import save as save_feedback, current as feedback_state, save_link as save_feedback_link, change as change_feedback, FeedbackError
 from reference_notes import save as save_reference_note, current as reference_notes_state, handoff as reference_handoff, NoteError
 from reference_preview import save as save_reference_preview, PreviewError
 from project_tools import state as project_tools_state, open_editor, ToolsError
@@ -96,6 +96,17 @@ class Handler(SimpleHTTPRequestHandler):
         if not self.trusted(write=True): return
         if self.headers.get('Transfer-Encoding') or len(self.headers.get_all('Content-Length', [])) != 1:
             return self.send_error(400)
+        if self.path == '/feedback-note':
+            if self.headers.get('X-Studio-Action')!='feedback-note':return self.send_error(403)
+            if self.headers.get_content_type()!='application/json':return self.send_error(415)
+            try:
+                size=int(self.headers.get('Content-Length','0'))
+                if not 0<size<=16384:return self.send_error(413)
+                result=change_feedback(json.loads(self.rfile.read(size)))
+            except json.JSONDecodeError:return self.json_error(400,'Use a valid JSON feedback change.')
+            except (FeedbackError,ReviewError) as error:return self.json_error(error.status,str(error))
+            except (OSError,ValueError,TypeError,KeyError):return self.json_error(503,'Feedback could not be changed. Existing notes and your draft are preserved.')
+            return self.text(json.dumps(result),'application/json',False)
         if self.path == '/feedback-link':
             if not self.trusted(write=True):return
             if self.headers.get('Transfer-Encoding') or len(self.headers.get_all('Content-Length',[]))!=1:return self.send_error(400)
@@ -103,7 +114,7 @@ class Handler(SimpleHTTPRequestHandler):
             if self.headers.get_content_type()!='application/json':return self.send_error(415)
             try:
                 size=int(self.headers.get('Content-Length','0'))
-                if not 0<size<=262144:return self.send_error(413)
+                if not 0<size<=1048576:return self.send_error(413)
                 result=save_feedback_link(json.loads(self.rfile.read(size)))
             except json.JSONDecodeError:return self.json_error(400,'Use a valid JSON feedback selection.')
             except (FeedbackError,ReviewError) as error:return self.json_error(error.status,str(error))
