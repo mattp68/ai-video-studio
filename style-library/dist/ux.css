@@ -135,3 +135,10 @@ footer{flex-wrap:wrap;font-size:11px;gap:20px}footer .footer-links{display:flex;
 .feedback-undo{font-size:12px;padding:10px 12px;background:#f0f3e7;border-radius:6px;color:#50663b}.feedback-undo button{font-size:12px;margin-left:8px}
 .feedback-deleted{margin:20px 0 0;font-size:12px;color:#6d7c5c}.feedback-conflict{padding:10px 12px;background:#f6f1e7;border-radius:6px}.feedback-conflict p{font-size:12px!important}.feedback-refresh{float:right;font-size:10px;padding:4px 0;margin-top:8px}
 @media(forced-colors:active){#feedback-text:focus,[data-feedback-edit-text]:focus{outline:2px solid Highlight;outline-offset:2px}}
+
+/* Keep scene browsing attached to its preview, independent of discussion length. */
+.storyboard-media{min-width:0;align-self:start}.storyboard-media .storyboard-toolbar{margin-top:13px}.storyboard-media .project-thumbs{margin-top:0;padding-bottom:8px;scrollbar-width:thin;scrollbar-color:#b3bea0 transparent}
+.feedback-note-list{max-height:min(42vh,360px);overflow-y:auto;overscroll-behavior-y:contain;scrollbar-gutter:stable;scrollbar-width:thin;scrollbar-color:#b3bea0 transparent;padding-right:8px;margin-top:3px}
+.feedback-note-list:focus-visible{outline:2px solid #96a77d;outline-offset:3px;border-radius:4px}
+.feedback-note-list article:last-child{border-bottom:0}.storyboard-layout #review-controls:empty{display:none}
+@media(max-width:730px){.storyboard-media .project-thumbs{padding-bottom:10px}.feedback-note-list{max-height:min(50vh,360px)}}

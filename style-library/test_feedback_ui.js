@@ -209,3 +209,15 @@ test('unsaved corrections survive switching notes and cancel removes only that c
   await h.click('[data-feedback-edit]', {feedbackEdit: 'current-a', noteScope: 'version'});
   assert.match(h.html, /My first unsaved correction/); assert.equal(h.requests.length, 0);
 });
+
+test('reading position is retained per version and a newly saved note is revealed at the top', async () => {
+  const h = harness(); await h.api.render(project, edit);
+  h.node('.feedback-note-list').scrollTop = 180;
+  await h.api.render(project, board, 1);
+  assert.equal(h.node('.feedback-note-list').scrollTop, 0);
+  await h.api.render(project, edit);
+  assert.equal(h.node('.feedback-note-list').scrollTop, 180);
+  h.node('#feedback-text').value = 'The newest saved feedback';
+  await h.click('[data-feedback-save]');
+  assert.equal(h.node('.feedback-note-list').scrollTop, 0);
+});

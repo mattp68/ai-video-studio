@@ -1,7 +1,7 @@
 /* Local review notes, independent of assistant accounts and approval decisions. */
 window.ProjectFeedback = (() => {
   let target = null, data = null, loading = 0, busy = false;
-  const drafts = new Map(), saves = new Map(), changes = new Map(), editDrafts = new Map();
+  const drafts = new Map(), saves = new Map(), changes = new Map(), editDrafts = new Map(), noteScroll = new Map();
   let editing = null, deleted = null, notice = '';
   async function reply(response) {
     try { return await response.json(); } catch { throw Error('The studio could not load feedback. Check its connection and try again.'); }
@@ -13,7 +13,10 @@ window.ProjectFeedback = (() => {
   const openNotes = () => visibleNotes().filter(n => n.status === 'open');
   const versionNotes = () => visibleNotes().filter(n => n.artifact_id === target?.artifact.id);
   const dateLabel = value => { const d = new Date(value); return Number.isNaN(d.valueOf()) ? '' : d.toLocaleString(undefined, {month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'}); };
+  const versionKey = t => t.project.id + '/' + t.artifact.id;
   function retain() {
+    const list = document.querySelector('.feedback-note-list');
+    if (target && list && Number.isFinite(list.scrollTop)) noteScroll.set(versionKey(target), list.scrollTop);
     const text = document.querySelector('#feedback-text');
     if (target && text) drafts.set(key(target), {text: text.value, time: target.time});
     const edit = document.querySelector('[data-feedback-edit-text]');
@@ -80,9 +83,11 @@ window.ProjectFeedback = (() => {
       <button class="text-button feedback-refresh" data-feedback-reload ${busy ? 'disabled' : ''}>Refresh notes</button>
       <p id="feedback-status" role="status">${esc(notice || (data ? 'Save your note here, then copy feedback to your editing chat.' : 'Loading saved feedback…'))}</p>
       ${deleted && data?.notes.some(n => n.id === deleted && n.deleted_at) ? `<p class="feedback-undo">Note deleted. <button class="text-button" data-feedback-change="restore" data-note-id="${esc(deleted)}" ${busy ? 'disabled' : ''}>Undo</button></p>` : ''}
-      <div class="feedback-notes" aria-label="Saved notes on this version">${current.length ? `<h5>Saved on this version (${current.length})</h5>${noteCards(current)}` : ''}</div>
+      <div class="feedback-notes" aria-label="Saved notes on this version">${current.length ? `<h5 id="version-feedback-heading">Saved on this version (${current.length})</h5><div class="feedback-note-list" role="region" aria-labelledby="version-feedback-heading" tabindex="0">${noteCards(current)}</div>` : ''}</div>
       ${pending.length ? `<section class="feedback-handoff" aria-label="Send saved feedback to your editing chat"><div><h5>Ready for your editing chat</h5><p><strong>${pending.length} open ${pending.length === 1 ? 'note' : 'notes'} · ${esc(version)}</strong></p></div><button class="primary" data-feedback-copy="version" ${busy ? 'disabled' : ''}>Copy feedback for chat</button><p>Copies a request for these exact open notes. Paste it into your editing chat to apply them.</p><p class="feedback-copy-status" role="status"></p></section>` : ''}`;
     paintList();
+    const list = document.querySelector('.feedback-note-list');
+    if (list) list.scrollTop = noteScroll.get(versionKey(target)) || 0;
     if (field) { const next = document.querySelector('#' + field.id); if (next && !next.disabled) { next.focus({preventScroll: true}); if (typeof field.start === 'number') next.setSelectionRange(field.start, field.end); } }
   }
   async function render(project, artifact, frameIndex = 0) {
@@ -152,7 +157,7 @@ window.ProjectFeedback = (() => {
       const response = await fetch('/feedback', {method: 'POST', headers: {'Content-Type': 'application/json', 'X-Studio-Action': 'feedback'}, body: JSON.stringify(body)});
       const result = await reply(response);
       if (!response.ok) { const error = Error(result.error || 'Feedback could not be saved. Your draft is still here.'); error.conflict = response.status === 409; throw error; }
-      drafts.delete(token); saves.delete(token); busy = false;
+      drafts.delete(token); saves.delete(token); noteScroll.set(versionKey(destination), 0); busy = false;
       if (target === destination) {
         target.time = null; data = result; paint();
         const status = document.querySelector('#feedback-status');
@@ -209,6 +214,7 @@ window.ProjectFeedback = (() => {
       changes.delete(signature);
       if (target?.project.id === project) {
         data = result;
+        if (action === 'edit' && n.artifact_id === target.artifact.id) noteScroll.set(versionKey(target), 0);
         editDrafts.delete(project + '/' + id);
         if (editing?.id === id) editing = null;
         deleted = action === 'delete' ? id : deleted === id ? null : deleted;

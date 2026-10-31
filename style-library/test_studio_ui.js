@@ -107,3 +107,16 @@ test('scene changes retain the filmstrip, overview, disclosure and navigation co
  assert.equal(context.window.ReviewLayout.updateFrame(container,a,0),true);assert.equal(previous.disabled,true);
  assert.equal(context.window.ReviewLayout.updateFrame(container,a,99),false);
 });
+
+
+test('automatic filmstrip reveal scrolls only horizontally and respects the overview',()=>{
+ const strip={scrollLeft:200,classList:{contains:()=>false},getBoundingClientRect:()=>({left:100,right:600})};
+ const selected={getBoundingClientRect:()=>({left:690,right:775})};
+ const context={window:{},esc:String,document:{addEventListener(){}}};
+ runInNewContext(readFileSync(join(__dirname,'dist/review-layout.js'),'utf8'),context);
+ const container={querySelector:s=>s==='.project-thumbs'?strip:selected};
+ context.window.ReviewLayout.revealFrame(container);assert.equal(strip.scrollLeft,379);
+ selected.getBoundingClientRect=()=>({left:120,right:205});context.window.ReviewLayout.revealFrame(container);assert.equal(strip.scrollLeft,379);
+ selected.getBoundingClientRect=()=>({left:20,right:105});context.window.ReviewLayout.revealFrame(container);assert.equal(strip.scrollLeft,295);
+ strip.classList.contains=()=>true;context.window.ReviewLayout.revealFrame(container);assert.equal(strip.scrollLeft,295);
+});
