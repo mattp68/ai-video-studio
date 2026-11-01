@@ -1,4 +1,15 @@
-# Current release validation — 0.1.0-beta.3 (2026-10-31)
+# Current release validation — 0.1.0-beta.4 (2026-11-01)
+
+- Documentation and configuration release: SETUP/STATUS/BRIEF/PROJECT_CONTEXT version labels, the studio.config.json sound default and the maintainer release check. No application code, dependency or renderer pin changed; beta.3's interface and data behavior are unchanged.
+- The release check now also verifies SETUP.md, STATUS.md, BRIEF.md and PROJECT_CONTEXT.md. Run against the published beta.3 tree, it reports the stale SETUP.md tag that this release fixes. 125 Python tests and 51 Node UI tests, JavaScript syntax, exact committed source (113 files), version/tag consistency and empty-seed checks pass. npm audit and pip-audit of the core and optional speech locks report no known vulnerabilities.
+- An exact 113-file preflight export was extracted into a fresh directory and set up with Python 3.13.1, including the optional Apple Silicon transcription lock; pip check passed and the starter registries were empty. The synthetic smoke completed a 2.4-second assembly and a 5-second 1080×1920 30 fps HyperFrames render, and a decoded frame was visually inspected. 125 Python and 51 UI tests passed in that copy. Setup correctly refused this Mac's default Python 3.10. Package and browser caches on this machine were reused; this is not an independent-machine or fresh-assistant pilot.
+- Populated beta.3 → beta.4 Git and ZIP upgrade rehearsals each preserved hashes for 21 owner files: raw/exported/reference media, a project, a source-pinned technique and evidence, settings, original/versioned scripts, approvals, exact feedback links, borrowing notes, editor copies/sessions and local configuration. A local README customization was detected and reconciled rather than overwritten, existing links and the technique stayed readable, the fixture server restarted on the new version, feedback edit/delete/restore still worked and source rollback retained data created after upgrading.
+
+This is the public launch beta. Broader real-media workflows, fresh assistant sessions and other-platform compatibility remain pilot coverage; full media checks here target Apple Silicon macOS. See docs/PILOT.md.
+
+---
+
+# Previous release validation — 0.1.0-beta.3 (2026-10-31)
 
 - 125 Python tests and 51 dependency-free Node UI tests pass locally and in a separately extracted, source-only installation. JavaScript syntax, exact committed source, version/tag consistency and empty starter seed checks pass. The release keeps the renderer and dependency pins unchanged.
 - Full fresh setup installed the hashed core and optional Apple Silicon transcription dependencies. pip check and MLX Whisper/Pillow/certifi imports passed. The initial project/reference/technique seeds were empty. Package and browser caches on this same machine were reused; this is not an independent-machine or fresh-assistant pilot.
