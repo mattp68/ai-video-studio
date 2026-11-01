@@ -53,6 +53,8 @@ def register(kind, manifest, replace=False):
         if data[key][existing].get('review_decision') or data[key][existing].get('approval'):
             raise ValueError('This record has saved approvals. Reconcile those explicitly before replacing its descriptor.')
         data[key][existing]=item
+    # The Projects home lists projects.json in order, so a new project goes first.
+    elif kind=='project':data[key].insert(0,item)
     else:data[key].append(item)
     if target.is_symlink():raise ValueError('Registry must not be a symlink')
     if target.exists():
