@@ -71,8 +71,8 @@
   },
   "sound_design": {
     "creative_priority": "polish, suspense, energy, and payoff through purposeful music, effects, and silence",
-    "preferred_library": "Epidemic Sound",
-    "subscription_status": "Use your own account; verify coverage for each project.",
+    "preferred_library": "None required: generate effects locally or use suitable free assets; a personal library is optional",
+    "subscription_status": "No subscription needed. If you use your own sound library, confirm your access and usage rights for each project.",
     "music_default": "brief-specific; do not add automatically",
     "sfx_preference": "Sparse physical mouse clicks, clean snaps or pops; avoid squishy, rubbery, pitched and downward digital accents",
     "speech_priority": true,

@@ -26,3 +26,5 @@ Editor working copies are retained and reopened for the same project/artifact an
 
 
 Beta.2 → beta.3 feedback corrections add optional history, updated_at and deleted_at fields to existing schema1 notes, plus content revisions on newly copied selections. No owner-data rewrite or seed replacement is required. Preserve these fields and all note/link records during upgrade and rollback; old app versions do not understand deletion markers, so do not use their feedback-copy UI after creating corrected/deleted notes. Roll back source only while retaining the newer data, and use a compatible assistant/read path for those notes.
+
+Beta.3 → beta.4 changes documentation, the studio.config.json sound-default wording and the maintainer release check only. There is no application code, dependency, renderer or owner-data change. If the installed studio.config.json differs from the beta.3 baseline, treat it as a local customization and keep it.
