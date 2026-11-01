@@ -23,10 +23,15 @@ def verify(files):
         raise ValueError('Installed interface version disagrees with package.json.')
     if 'Local preview' in html:
         raise ValueError('Published interface still says Local preview.')
-    for name in ['README.md', 'INSTALL_PROMPT.md', 'docs/PILOT.md']:
+    for name in ['README.md', 'INSTALL_PROMPT.md', 'docs/PILOT.md', 'SETUP.md']:
         tags = re.findall(r'v\d+\.\d+\.\d+(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?', files[name].decode())
         if not tags or any(tag != 'v' + version for tag in tags):
             raise ValueError('Wrong installation/pilot tag in ' + name)
+    # Plain current-version labels that new users and assistants read first.
+    number = r'(\d+\.\d+\.\d+(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?)'
+    for name, label in [('STATUS.md', r'^# AI Video Studio — '), ('BRIEF.md', r'Current release:\s*'), ('PROJECT_CONTEXT.md', r'version \*\*')]:
+        if re.findall(label + number, files[name].decode(), re.M) != [version]:
+            raise ValueError('Wrong current version label in ' + name)
     catalog = data('style-library/catalog.example.json')
     projects = data('style-library/projects.example.json')
     if catalog.get('entries') != [] or catalog.get('techniques') != [] or catalog.get('removed_references'):

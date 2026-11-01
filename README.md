@@ -4,13 +4,13 @@
 
 An open-source AI video editing studio for your footage, visual storyboards and creative references. Create in chat with Codex or Claude Code; keep each cut, review and final in your own studio.
 
-**Public launch beta · v0.1.0-beta.3.** Start with Apple Silicon macOS for the closest match to current validation. Fresh assistant/team workflows and other platforms are being tested. [What has been verified](docs/VALIDATION.md) · [Pilot checklist](docs/PILOT.md)
+**Public launch beta · v0.1.0-beta.4.** Start with Apple Silicon macOS for the closest match to current validation. Fresh assistant/team workflows and other platforms are being tested. [What has been verified](docs/VALIDATION.md) · [Pilot checklist](docs/PILOT.md)
 
 ## Set up with one prompt
 
 Paste this into Codex or Claude Code on your computer:
 
-> Set up AI Video Studio from https://github.com/mattp68/ai-video-studio at tag v0.1.0-beta.3 in a new local folder. Read SETUP.md and AGENTS.md first. Check prerequisites and guide me through any missing system tools with my authorization. Install project-local dependencies, including local transcription on a supported Apple Silicon Mac. Run the tests and full synthetic smoke workflow, report available and unavailable capabilities, and open my local studio. Preserve existing files. Use my own footage, references and accounts; ask before paid services or system-wide changes. Do not publish my work.
+> Set up AI Video Studio from https://github.com/mattp68/ai-video-studio at tag v0.1.0-beta.4 in a new local folder. Read SETUP.md and AGENTS.md first. Check prerequisites and guide me through any missing system tools with my authorization. Install project-local dependencies, including local transcription on a supported Apple Silicon Mac. Run the tests and full synthetic smoke workflow, report available and unavailable capabilities, and open my local studio. Preserve existing files. Use my own footage, references and accounts; ask before paid services or system-wide changes. Do not publish my work.
 
 The repository includes the working code and templates. Setup installs their dependencies; the assistant does not rebuild the application. Missing system tools may need your authorization or your company’s installation process. [Setup and troubleshooting](SETUP.md) · [Capabilities and optional tools](docs/CAPABILITIES.md)
 

@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.0-beta.4 — 2026-11-01
+
+- SETUP.md points new installations to the current release; it previously named beta.2, which could steer a fresh setup to an older build than the install prompt requested.
+- Current-version labels in STATUS.md, BRIEF.md and PROJECT_CONTEXT.md are corrected, and the release check now verifies them along with SETUP.md so they cannot fall behind again.
+- studio.config.json no longer names a paid sound library as the default: generated or suitable free sounds come first and a personal library stays optional, matching docs/SOUND-DESIGN.md.
+
+### Upgrading from beta.3
+
+Follow docs/UPDATING.md. This release changes documentation, the studio.config.json sound-default wording and the maintainer release check only; there is no application code, dependency, renderer or data change. If you customized studio.config.json, keep your version. Prepared for the November 2 public launch.
+
 ## 0.1.0-beta.3 — Public Launch — 2026-10-31
 
 - Edit saved project feedback inline, or delete with Undo and persistent recovery in All saved notes. Prior wording and applied history remain attached to the original version.
