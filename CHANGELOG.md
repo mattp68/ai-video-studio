@@ -1,10 +1,14 @@
 # Changelog
 
-## Unreleased
+## 0.1.0-beta.5 — 2026-11-01
 
 - Registry validation now fails when a registered library file exists but the local server would refuse to serve it (outside projects/<slug> or references/<slug>, hidden, or an unsupported type). Updates run this before restarting, so an upgrade cannot silently stop someone's videos from playing.
 - New read-only `scripts/check_install.py` compares installed application files with a published release manifest and lists identical, modified (local customizations or older copies) and missing files, so "am I up to date?" no longer depends on the version label.
 - docs/UPDATING.md and the Updates page request now require confirming that existing projects and the reference library still open and play before restarting.
+
+### Upgrading from beta.4
+
+Follow docs/UPDATING.md. There is no dependency, renderer or data change. If `python3 style-library/library.py validate` now reports a registered file that would not be served, that item already could not play in the studio: reconcile its registration or the installation rather than moving media. Prepared for the November 2 public launch.
 
 ## 0.1.0-beta.4 — 2026-11-01
 

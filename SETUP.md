@@ -4,7 +4,7 @@ Start in this repository’s root. Read AGENTS.md. Use the included working code
 
 ## 1. Get your copy and check the machine
 
-For a reproducible installation, use the **v0.1.0-beta.4** [release](https://github.com/mattp68/ai-video-studio/releases/tag/v0.1.0-beta.4): clone and check out that tag, or download its source ZIP and extract it into a new folder. Open that folder in Codex or Claude Code. Use your own assistant account. Git is needed for cloning; a ZIP works without it.
+For a reproducible installation, use the **v0.1.0-beta.5** [release](https://github.com/mattp68/ai-video-studio/releases/tag/v0.1.0-beta.5): clone and check out that tag, or download its source ZIP and extract it into a new folder. Open that folder in Codex or Claude Code. Use your own assistant account. Git is needed for cloning; a ZIP works without it.
 
 The home base needs Python 3.11+. Full media work also needs Node 22+, npm, FFmpeg and FFprobe. Python 3.13 and a supported Node LTS release are sensible starting choices for the pilot. Run `python3 scripts/setup.py --check`; a nonzero exit means required media dependencies are not ready yet, and the report explains what is missing.
 

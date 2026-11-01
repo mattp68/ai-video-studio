@@ -6,4 +6,4 @@ Keep shared Codex/Claude Code instructions, project-local pinned setup, source-b
 
 Application maintenance follows docs/RELEASE.md: branch, pull request, checks, merge and a numbered release. New installations start empty; upgrades preserve owner collections, footage, techniques, scripts, settings, feedback, approvals and local customizations. The clean public starter is separate from any private production studio.
 
-Current release: 0.1.0-beta.4. Shared instructions and update guidance must work in a fresh chat without private conversation history. The code is MIT, copyright2026 Matt Paige; dependencies/fonts retain their own notices. Independent-user/fresh-assistant testing follows beta publication, with actual results and limitations recorded in docs/VALIDATION.md and docs/PILOT.md.
+Current release: 0.1.0-beta.5. Shared instructions and update guidance must work in a fresh chat without private conversation history. The code is MIT, copyright2026 Matt Paige; dependencies/fonts retain their own notices. Independent-user/fresh-assistant testing follows beta publication, with actual results and limitations recorded in docs/VALIDATION.md and docs/PILOT.md.
