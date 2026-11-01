@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Registry validation now fails when a registered library file exists but the local server would refuse to serve it (outside projects/<slug> or references/<slug>, hidden, or an unsupported type). Updates run this before restarting, so an upgrade cannot silently stop someone's videos from playing.
+- New read-only `scripts/check_install.py` compares installed application files with a published release manifest and lists identical, modified (local customizations or older copies) and missing files, so "am I up to date?" no longer depends on the version label.
+- docs/UPDATING.md and the Updates page request now require confirming that existing projects and the reference library still open and play before restarting.
+
 ## 0.1.0-beta.4 — 2026-11-01
 
 - SETUP.md points new installations to the current release; it previously named beta.2, which could steer a fresh setup to an older build than the install prompt requested.
