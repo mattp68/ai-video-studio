@@ -2,6 +2,7 @@
 from pathlib import Path
 import json, sys, re, hashlib
 from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
+from security import registered_file, MEDIA, NOTES
 
 BASE = Path(__file__).resolve().parent
 STUDIO = BASE.parent
@@ -186,6 +187,19 @@ def context_handoff(ids, notes=None, mode='short', base_url=''):
         out += ['']
     return '\n'.join(out).rstrip()
 
+def served_files(e):
+    """Every registered library file the local server will be asked to serve."""
+    files = [(e.get('media_path'), MEDIA), (e.get('archive_path'), {'.zip'})]
+    files += [(name, NOTES) for name in e.get('notes', [])] + [(s['path'], MEDIA) for s in e.get('slides', [])]
+    return [(name, kinds) for name, kinds in files if name]
+
+def check_served(e):
+    # Existing files can still be refused by the server's confinement rules; fail
+    # here, before an update restarts the studio, rather than leave an item that won't play.
+    for name, kinds in served_files(e):
+        try: registered_file(STUDIO, name, kinds)
+        except ValueError: raise AssertionError('Registered library file would not be served: ' + name) from None
+
 def validate():
     entries = catalog()['entries']; ids = [e['id'] for e in entries]
     assert len(ids)==len(set(ids)), 'Duplicate style id'
@@ -216,6 +230,7 @@ def validate():
                 f=(STUDIO/e['archive_path']).resolve()
                 assert f.is_relative_to(STUDIO) and f.is_file(),e['archive_path']
         assert all(0<=m['time']<e['duration'] for m in e['moments']) if e.get('duration') else not e['moments']
+        check_served(e)
         media += bool(e.get('media_path'))
         assert e['id'] in reference_brief([e['id']])
     techniques = list(technique_map().values())

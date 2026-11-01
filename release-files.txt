@@ -41,6 +41,7 @@ templates/selects.csv
 templates/sound-cues.csv
 scripts/export_release.py
 scripts/check_release.py
+scripts/check_install.py
 scripts/hf.py
 scripts/register.py
 scripts/setup.py
@@ -63,6 +64,7 @@ style-library/test_projects.py
 style-library/test_reviews.py
 style-library/test_security.py
 style-library/test_release.py
+style-library/test_install_safety.py
 style-library/dist/index.html
 style-library/dist/styles.css
 style-library/dist/studio.css

@@ -1,4 +1,15 @@
-# Current release validation — 0.1.0-beta.4 (2026-11-01)
+# Current release validation — 0.1.0-beta.5 (2026-11-01)
+
+- Safer-update release: registry validation now applies the server's served-file confinement, new read-only scripts/check_install.py compares installed files with a published manifest, and the update guide/Updates request require both checks before restarting. No dependency or renderer pin changed; the editing/review/library interface is unchanged apart from the Updates request wording.
+- 132 Python tests (including disposable-fixture served-file and install-comparison tests) and 51 Node UI tests, JavaScript syntax, exact committed source (115 files), version/tag consistency and empty-seed checks pass. npm audit and pip-audit of the core and optional speech locks report no known vulnerabilities. Run read-only against a real catalog with an older reference layout, the new validator flags the items the server would refuse; against a customized installation, check_install.py matched a manual file audit.
+- An exact 115-file preflight export was extracted into a fresh directory and set up with Python 3.13.1, including the optional Apple Silicon transcription lock; the starter registries were empty and library validation passed. The synthetic smoke completed a 2.4-second assembly and a 5-second 1080×1920 30 fps HyperFrames render, and a decoded frame was visually inspected. 132 Python and 51 UI tests passed in that copy, and check_install.py reported all 115 files identical to the export manifest. Package and browser caches on this machine were reused; this is not an independent-machine or fresh-assistant pilot.
+- Populated beta.4 → beta.5 Git and ZIP upgrade rehearsals each preserved hashes for 21 owner files. Before the update, the new check_install.py run against the beta.4 manifest reported only the planted README customization. The customization was reconciled rather than overwritten, both validators (including the served-file check) passed, existing links and the technique stayed readable, the fixture server restarted on beta.5, feedback edit/delete/restore still worked and source rollback retained data created after upgrading.
+
+This is the public launch beta. Broader real-media workflows, fresh assistant sessions and other-platform compatibility remain pilot coverage; full media checks here target Apple Silicon macOS. See docs/PILOT.md.
+
+---
+
+# Previous release validation — 0.1.0-beta.4 (2026-11-01)
 
 - Documentation and configuration release: SETUP/STATUS/BRIEF/PROJECT_CONTEXT version labels, the studio.config.json sound default and the maintainer release check. No application code, dependency or renderer pin changed; beta.3's interface and data behavior are unchanged.
 - The release check now also verifies SETUP.md, STATUS.md, BRIEF.md and PROJECT_CONTEXT.md. Run against the published beta.3 tree, it reports the stale SETUP.md tag that this release fixes. 125 Python tests and 51 Node UI tests, JavaScript syntax, exact committed source (113 files), version/tag consistency and empty-seed checks pass. npm audit and pip-audit of the core and optional speech locks report no known vulnerabilities.
