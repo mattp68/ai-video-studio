@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.0-beta.6 — 2026-11-01
+
+- A newly registered project now appears first on the Projects home instead of last. Replacing an existing project keeps its place, and reference registrations are unchanged.
+
+### Upgrading from beta.5
+
+Follow docs/UPDATING.md. This release changes scripts/register.py and its docs and tests only; there is no interface, dependency, renderer or data change. Your existing project order is kept as it is: only projects registered after updating go to the top. Prepared for the November 2 public launch.
+
 ## 0.1.0-beta.5 — 2026-11-01
 
 - Registry validation now fails when a registered library file exists but the local server would refuse to serve it (outside projects/<slug> or references/<slug>, hidden, or an unsupported type). Updates run this before restarting, so an upgrade cannot silently stop someone's videos from playing.

@@ -1,6 +1,6 @@
 # Your creative home
 
-This is the reusable AI Video Studio starter, version **0.1.0-beta.5**. Each installation starts with empty personal project/reference registries. Users bring their own footage, references, preferences and accounts. Existing installations keep their collections when upgrading.
+This is the reusable AI Video Studio starter, version **0.1.0-beta.6**. Each installation starts with empty personal project/reference registries. Users bring their own footage, references, preferences and accounts. Existing installations keep their collections when upgrading.
 
 ## Start a new chat
 

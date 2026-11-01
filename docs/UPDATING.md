@@ -30,3 +30,5 @@ Beta.2 → beta.3 feedback corrections add optional history, updated_at and dele
 Beta.3 → beta.4 changes documentation, the studio.config.json sound-default wording and the maintainer release check only. There is no application code, dependency, renderer or owner-data change. If the installed studio.config.json differs from the beta.3 baseline, treat it as a local customization and keep it.
 
 Beta.4 → beta.5 adds scripts/check_install.py, a served-file check in library validation and updated Updates-page wording. There is no dependency, renderer or owner-data change. If validation now reports a registered file that would not be served, that item already could not play in the studio: reconcile its registration or the installation's confinement rules rather than moving owner media.
+
+Beta.5 → beta.6 changes scripts/register.py so a newly registered project is inserted first in projects.json; --replace keeps a record's position and reference registrations still append. There is no interface, dependency, renderer or owner-data change, and existing projects.json order is not rewritten during the update.
