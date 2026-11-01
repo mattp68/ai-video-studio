@@ -1,4 +1,15 @@
-# Current release validation — 0.1.0-beta.5 (2026-11-01)
+# Current release validation — 0.1.0-beta.6 (2026-11-01)
+
+- New-projects-first release: scripts/register.py inserts a newly registered project at the top of projects.json, --replace keeps a record's position and reference registrations still append. No interface, dependency or renderer pin changed, and existing project order is not rewritten.
+- 136 Python tests (including four disposable-fixture registration-order tests, one of which fails against the beta.5 register.py) and 51 Node UI tests, JavaScript syntax, exact committed source (116 files), version/tag consistency and empty-seed checks pass. npm audit and pip-audit of the core and optional speech locks report no known vulnerabilities.
+- An exact 116-file preflight export was extracted into a fresh directory and set up with Python 3.13.1, including the optional Apple Silicon transcription lock; the starter registries were empty and library validation passed. The synthetic smoke completed a 2.4-second assembly and a 5-second 1080×1920 30 fps HyperFrames render, and a decoded frame was visually inspected. 136 Python and 51 UI tests passed in that copy, and check_install.py reported all 116 files identical to the export manifest. Package and browser caches on this machine were reused; this is not an independent-machine or fresh-assistant pilot.
+- Populated beta.5 → beta.6 Git and ZIP upgrade rehearsals each preserved hashes for 21 owner files. Before the update, check_install.py against the beta.5 manifest reported only the planted README customization, which was reconciled rather than overwritten. Both validators passed, existing links and the technique stayed readable, the fixture server restarted on beta.6 and feedback edit/delete/restore still worked. A project registered after upgrading was listed first with the existing project kept second, and source rollback to beta.5 retained that data and order.
+
+This is the public launch beta. Broader real-media workflows, fresh assistant sessions and other-platform compatibility remain pilot coverage; full media checks here target Apple Silicon macOS. See docs/PILOT.md.
+
+---
+
+# Previous release validation — 0.1.0-beta.5 (2026-11-01)
 
 - Safer-update release: registry validation now applies the server's served-file confinement, new read-only scripts/check_install.py compares installed files with a published manifest, and the update guide/Updates request require both checks before restarting. No dependency or renderer pin changed; the editing/review/library interface is unchanged apart from the Updates request wording.
 - 132 Python tests (including disposable-fixture served-file and install-comparison tests) and 51 Node UI tests, JavaScript syntax, exact committed source (115 files), version/tag consistency and empty-seed checks pass. npm audit and pip-audit of the core and optional speech locks report no known vulnerabilities. Run read-only against a real catalog with an older reference layout, the new validator flags the items the server would refuse; against a customized installation, check_install.py matched a manual file audit.
