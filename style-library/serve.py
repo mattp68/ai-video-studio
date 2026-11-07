@@ -9,7 +9,7 @@ from review_actions import apply_decision, ReviewError
 from security import registered_file, MEDIA, NOTES
 from reference_intake import save as save_reference, current as reference_state, visibility_state, set_visibility, IntakeError
 from feedback import save as save_feedback, current as feedback_state, save_link as save_feedback_link, change as change_feedback, FeedbackError
-from reference_notes import save as save_reference_note, current as reference_notes_state, handoff as reference_handoff, NoteError
+from reference_notes import save as save_reference_note, edit as edit_reference_note, current as reference_notes_state, handoff as reference_handoff, NoteError
 from reference_preview import save as save_reference_preview, PreviewError
 from project_tools import state as project_tools_state, open_editor, ToolsError
 
@@ -83,17 +83,17 @@ class Handler(SimpleHTTPRequestHandler):
             except (PreviewError,IntakeError,ToolsError,ReviewError) as error:return self.json_error(error.status,str(error))
             except (OSError,ValueError,TypeError,KeyError):return self.json_error(503,'This action is unavailable. Your saved work is preserved.')
             return self.text(json.dumps(result),'application/json',False)
-        if self.path in {'/reference-notes','/reference-handoff'}:
+        if self.path in {'/reference-notes','/reference-note-edit','/reference-handoff'}:
             if not self.trusted(write=True):return
             if self.headers.get('Transfer-Encoding') or len(self.headers.get_all('Content-Length',[]))!=1:return self.send_error(400)
-            action='reference-note' if self.path=='/reference-notes' else 'reference-handoff'
+            action='reference-note' if self.path=='/reference-notes' else self.path[1:]
             if self.headers.get('X-Studio-Action')!=action:return self.send_error(403)
             if self.headers.get_content_type()!='application/json':return self.send_error(415)
             try:
                 size=int(self.headers.get('Content-Length','0'))
-                if not 0<size<=(16384 if action=='reference-note' else 262144):return self.send_error(413)
+                if not 0<size<=(262144 if action=='reference-handoff' else 16384):return self.send_error(413)
                 body=json.loads(self.rfile.read(size))
-                result=save_reference_note(body) if action=='reference-note' else reference_handoff(body,'http://'+self.headers['Host'])
+                result=save_reference_note(body) if action=='reference-note' else edit_reference_note(body) if action=='reference-note-edit' else reference_handoff(body,'http://'+self.headers['Host'])
             except json.JSONDecodeError:return self.json_error(400,'Use a valid reference note request.')
             except (NoteError,FeedbackError,ReviewError) as error:return self.json_error(error.status,str(error))
             except (OSError,ValueError,TypeError,KeyError):return self.json_error(503,'Reference notes are unavailable. Existing notes and your draft are preserved.')
@@ -241,12 +241,15 @@ class Handler(SimpleHTTPRequestHandler):
             if not self.trusted():return
             try:
                 query=parse_qs(route.query,keep_blank_values=True)
-                return self.text(json.dumps(reference_notes_state(query.get('id',[''])[0],query.get('example',[None])[0])),'application/json',head)
+                if set(query)-{'id','example','selection'} or any(len(v)!=1 for v in query.values()):return self.send_error(400)
+                return self.text(json.dumps(reference_notes_state(query.get('id',[''])[0],query.get('example',[None])[0],query.get('selection',[None])[0])),'application/json',head)
             except (NoteError,ReviewError) as error:return self.json_error(error.status,str(error))
             except (OSError,ValueError,TypeError,KeyError):return self.json_error(503,'Reference notes are unavailable. Existing notes are preserved.')
         if path=='/reference-visibility':
             if not self.trusted():return
-            try:return self.text(json.dumps(visibility_state(parse_qs(route.query).get('id',[''])[0])),'application/json',head)
+            try:
+                query=parse_qs(route.query,keep_blank_values=True)
+                return self.text(json.dumps(visibility_state(query.get('id',[''])[0],query.get('example',[None])[0])),'application/json',head)
             except (IntakeError,ReviewError) as error:return self.json_error(error.status,str(error))
             except (OSError,ValueError,TypeError,KeyError):return self.json_error(503,'The reference is unavailable.')
         if path=='/project-script':

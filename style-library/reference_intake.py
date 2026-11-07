@@ -62,56 +62,69 @@ def read_catalog():
 def editable(entry):
     return entry.get('collection')=='reference' and bool(entry.get('source_url'))
 
-def removed_references(data):
-    removed=data.get('removed_references',{})
+def visibility_markers(data, kind):
+    removed=data.get(kind,{})
+    pattern=r'[a-z0-9][a-z0-9-]*(?:@[a-z0-9][a-z0-9-]*)?'
     if not isinstance(removed,dict) or any(
-        not isinstance(id,str) or not index.TOKEN.fullmatch(id) or
+        not isinstance(id,str) or not re.fullmatch(pattern,id) or ('@' in id)!=(kind=='removed_technique_examples') or
         not isinstance(value,dict) or set(value)!={'removed_at'} or
         not isinstance(value['removed_at'],str) or not value['removed_at']
         for id,value in removed.items()
-    ):raise IntakeError('The removed references need repair before changing the library.',503)
+    ):raise IntakeError('The removed library items need repair before changing the library.',503)
     return removed
 
-def visibility_snapshot(reference_id):
+def visibility_snapshot(reference_id, example_id=None):
     if not isinstance(reference_id,str) or not index.TOKEN.fullmatch(reference_id):raise IntakeError('Unknown reference.',404)
     storage.check_storage()
     if CATALOG.resolve()!=storage.CATALOG.resolve():raise IntakeError('The library path needs repair.',503)
     before,data=read_catalog()
-    entry=next((e for e in data['entries'] if e.get('id')==reference_id),None)
-    if not entry:raise IntakeError('That reference is unavailable.',404)
-    removed=removed_references(data)
-    state={'id':reference_id,'removed':reference_id in removed,
-           'revision':revision({'entry':entry,'removed':removed.get(reference_id)})}
-    return before,data,state
+    if example_id is None:
+        record=next((e for e in data['entries'] if e.get('id')==reference_id),None)
+        kind,token='removed_references',reference_id
+    else:
+        if not isinstance(example_id,str) or not index.TOKEN.fullmatch(example_id):
+            raise IntakeError('Unknown technique example.',404)
+        family=next((t for t in data.get('techniques',[]) if t['id']==reference_id),None)
+        record=next((x for x in family['examples'] if x['id']==example_id),None) if family else None
+        kind,token='removed_technique_examples',reference_id+'@'+example_id
+    if not record:raise IntakeError('That library item is unavailable.',404)
+    removed=visibility_markers(data,kind)
+    state={'id':reference_id,'removed':token in removed,
+           'revision':revision({'entry':record,'removed':removed.get(token)})}
+    if example_id is not None:
+        state['example_id']=example_id
+    return before,data,state,kind,token,record
 
-def visibility_state(reference_id):
+def visibility_state(reference_id, example_id=None):
     with index.STATE_LOCK:
-        return visibility_snapshot(reference_id)[2]
+        return visibility_snapshot(reference_id,example_id)[2]
 
 def set_visibility(body):
-    """Hide/restore a card; retain source entries, media, IDs and technique snapshots."""
-    if (not isinstance(body,dict) or set(body)!={'id','action','revision'} or
-        not isinstance(body.get('action'),str) or body.get('action') not in {'remove','restore'} or
+    """Hide or restore a library item while retaining exact sources and links."""
+    required={'id','action','revision'}
+    if (not isinstance(body,dict) or set(body) not in (required,required|{'example_id'}) or
+        ('example_id' in body and body['example_id'] is None) or
+        not isinstance(body.get('action'),str) or body['action'] not in {'remove','restore'} or
         not isinstance(body.get('revision'),str) or not re.fullmatch(r'[0-9a-f]{64}',body['revision'])):
-        raise IntakeError('Choose a reference to remove or restore.')
+        raise IntakeError('Choose a library item to remove or restore.')
     with index.STATE_LOCK:
-        before,data,state=visibility_snapshot(body['id'])
+        before,data,state,kind,token,record=visibility_snapshot(body['id'],body.get('example_id'))
         for path in storage.JOURNALS.glob('*/transaction.json'):
             if json.loads(path.read_text()).get('state')=='prepared':raise IntakeError('An earlier library save needs recovery before continuing.',503)
-        if body['revision']!=state['revision']:raise IntakeError('This reference changed. Refresh and review it before trying again.',409)
+        if body['revision']!=state['revision']:raise IntakeError('This library item changed. Refresh and review it before trying again.',409)
         removed=body['action']=='remove'
         if state['removed']==removed:return {**state,'changed':False}
-        markers=data.setdefault('removed_references',{})
-        if removed:markers[body['id']]={'removed_at':datetime.now(timezone.utc).isoformat()}
-        else:markers.pop(body['id'])
+        markers=data.setdefault(kind,{})
+        if removed:markers[token]={'removed_at':datetime.now(timezone.utc).isoformat()}
+        else:markers.pop(token)
         try:
             storage.commit({CATALOG.resolve():storage.json_bytes(data)},
-                {'request_id':str(uuid.uuid4()),'operation':body['action']+'-library-reference','reference_id':body['id']},
+                {'request_id':str(uuid.uuid4()),'operation':body['action']+'-library-item','reference_id':body['id'],
+                 'example_id':body.get('example_id')},
                 {CATALOG.resolve():hashlib.sha256(before).hexdigest()})
         except storage.ReviewError as error:raise IntakeError(str(error),error.status)
-        entry=next(e for e in data['entries'] if e['id']==body['id'])
-        return {'id':body['id'],'removed':removed,'changed':True,
-                'revision':revision({'entry':entry,'removed':markers.get(body['id'])})}
+        return {**state,'removed':removed,'changed':True,
+                'revision':revision({'entry':record,'removed':markers.get(token)})}
 
 def current(reference_id):
     if not isinstance(reference_id,str) or not index.TOKEN.fullmatch(reference_id):raise IntakeError('Unknown reference.',404)
@@ -132,8 +145,13 @@ def creator(name,entries):
 def save(body):
     if not isinstance(body,dict):raise IntakeError('Use the Add reference form.')
     action=body.get('action');fields={'action','url','title','creator','note'} if action=='create' else {'action','id','revision','title','creator','note'}
-    if action not in {'create','edit'} or set(body)!=fields:raise IntakeError('Use a valid reference save request.')
-    title=text(body['title'],'Title',120);name=text(body['creator'],'Creator',80);note=text(body['note'],'What caught your eye',1000,True)
+    # Accept the original create shape too, so an open older browser can finish saving.
+    if (action not in {'create','edit'} or
+            (set(body)!=fields and not (action=='create' and set(body)=={'action','url'}))):
+        raise IntakeError('Use a valid reference save request.')
+    title=text(body.get('title',''),'Title',120)
+    name=text(body.get('creator',''),'Creator',80)
+    note=text(body.get('note',''),'What caught your eye',1000,True)
     url=source_url(body['url']) if action=='create' else None
     with index.STATE_LOCK:
         storage.check_storage()

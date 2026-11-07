@@ -177,6 +177,36 @@ class RegisterOrderTest(unittest.TestCase):
         register.register('project', self.descriptor('draft-one', 'Updated draft'), replace=True)
         self.assertEqual(self.projects()[0]['starter_request_id'], request_id)
 
+    def test_inspected_examples_are_atomic_and_idempotent(self):
+        self.descriptor('demo', 'Demo')
+        entry = self.reference(collection='reference', duration=10, reference_note='Keep my note.')
+        register.register('reference', entry)
+        plan = self.root / 'techniques.json'
+        family = {'id':'tech-reveal','title':'Reveal','category':'Motion','summary':'Show the result.',
+                  'direction':'Reveal the cards in order.','aliases':[],'keep':[],'avoid':[],'evidence':'Fixture'}
+        first = {'id':'first','start':1,'end':3,'poster_at':2,'poster':'assets/techniques/first-v1.jpg',
+                 'label':'First example','evidence':'Fixture first range'}
+        second = first | {'id':'second','start':5,'end':8,'poster_at':6,'poster':'assets/techniques/second-v1.jpg'}
+        plan.write_text(json.dumps([{'family':family,'example':first}, {'family':{'id':'tech-reveal'},'example':second}]))
+        with patch.object(register.prepare_assets, 'poster') as poster:
+            register.register('reference', self.reference(collection='reference', duration=10), True, plan)
+            self.assertEqual(poster.call_count,2)
+            register.register('reference', entry, True, plan)
+            self.assertEqual(poster.call_count,2)
+            near_duplicate = first | {'id':'retry','start':1.1,'poster':'assets/techniques/retry-v1.jpg'}
+            plan.write_text(json.dumps([{'family':{'id':'tech-reveal'},'example':near_duplicate}]))
+            register.register('reference', entry, True, plan)
+            self.assertEqual(poster.call_count,2)
+        current = self.catalog()
+        self.assertEqual(current['entries'][0]['reference_note'],'Keep my note.')
+        self.assertEqual([x['id'] for x in current['techniques'][0]['examples']],['first','second'])
+        source = current['entries'][0]['source_sha256']
+        self.assertEqual(source,current['techniques'][0]['examples'][0]['source_sha256'])
+        before = (self.base/'catalog.json').read_bytes()
+        with self.assertRaisesRegex(ValueError,'Recheck every existing'):
+            register.register('reference', self.reference(collection='reference', duration=10, version='v2'), True, plan)
+        self.assertEqual(before,(self.base/'catalog.json').read_bytes())
+
     def test_new_references_still_append(self):
         catalog = self.base / 'catalog.json'
         catalog.write_text(json.dumps({'schema_version': 4, 'entries': [{'id': 'saved-earlier'}], 'techniques': []}))

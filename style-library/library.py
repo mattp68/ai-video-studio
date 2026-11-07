@@ -220,6 +220,13 @@ def validate():
     removed=catalog().get('removed_references',{})
     assert isinstance(removed,dict), 'Invalid removed references'
     assert all(isinstance(id,str) and re.fullmatch(r'[a-z0-9][a-z0-9-]*',id) and isinstance(value,dict) and set(value)=={'removed_at'} and isinstance(value['removed_at'],str) and value['removed_at'] for id,value in removed.items()), 'Invalid removed reference marker'
+    hidden_examples=catalog().get('removed_technique_examples',{})
+    assert isinstance(hidden_examples,dict) and all(
+        isinstance(key,str) and re.fullmatch(r'tech-[a-z0-9-]+@[a-z0-9-]+',key)
+        and isinstance(value,dict) and set(value)=={'removed_at'}
+        and isinstance(value['removed_at'],str) and value['removed_at']
+        for key,value in hidden_examples.items()
+    ), 'Invalid removed technique example marker'
     sources=[source_key(e['source_url'])for e in entries if e.get('source_url')]
     assert len(sources)==len(set(sources)), 'Duplicate source post; update its existing entry.'
     creators={}

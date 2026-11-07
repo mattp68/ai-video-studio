@@ -1,6 +1,6 @@
 /* Reversible library visibility. Source records and exact handoffs are retained. */
 window.LibraryVisibility=(()=>{
- let busy=false,undo=null,noticeId=null;
+ let busy=false,undo=null,noticeId=null,examplePick=null;
  const dialog=$('#removed-references-dialog');
  function details(e){
   noticeId=e.archived_from||e.id;const removed=isRemoved(e);
@@ -11,16 +11,31 @@ window.LibraryVisibility=(()=>{
  }
  function hideDetails(){noticeId=null;$('.library-removal-action').hidden=true;$('#removed-reference-notice').hidden=true;}
  function techniqueNotice(e){noticeId=e.archived_from||e.id;$('#removed-reference-notice').hidden=!isRemoved(e);}
+ function exampleDetails(t,x){
+  examplePick=t&&x?exampleToken(t.id,x.id):null;
+  $('#example-visibility').hidden=!examplePick;
+  $('#toggle-example-visibility').textContent=examplePick&&isExampleRemoved(t,x)?'Restore this example':'Remove this example';
+  $('#example-visibility-status').textContent=examplePick&&isExampleRemoved(t,x)?'Removed from browsing. Saved links still work.':'';
+ }
  function refresh(){
-  const removed=entries.filter(e=>!e.archived_from&&isRemoved(e));$('#open-removed-references').hidden=!removed.length;
-  $('#open-removed-references').textContent='Removed references ('+removed.length+')';
+  const count=entries.filter(e=>!e.archived_from&&isRemoved(e)).length+[...removedExamples].filter(selectionItem).length;
+  $('#open-removed-references').hidden=!count;
+  $('#open-removed-references').textContent='Removed from library ('+count+')';
   if(dialog.open)renderRemoved();
  }
  function renderRemoved(){
   const removed=entries.filter(e=>!e.archived_from&&isRemoved(e));
-  $('#removed-references-list').innerHTML=removed.length?removed.map(e=>'<article class="removed-reference-row"><div><h3>'+esc(e.title)+'</h3><p>'+esc(e.creator)+' · '+(e.collection==='mine'?'My work':'Other creators')+'</p></div><div><button class="text-button" data-view-removed="'+esc(e.id)+'">View</button><button class="secondary" data-restore-reference="'+esc(e.id)+'"'+(busy?' disabled':'')+'>Restore</button></div></article>').join(''):'<p class="removed-empty">No removed references. Everything is back in your library.</p>';
+  const examples=[...removedExamples].map(selectionItem).filter(Boolean);
+  const row=(title,description,view,restore)=>'<article class="removed-reference-row"><div><h3>'+esc(title)+'</h3><p>'+esc(description)+'</p></div><div>'+view+restore+'</div></article>';
+  $('#removed-references-list').innerHTML=removed.map(e=>row(e.title,e.creator,
+   '<button class="text-button" data-view-removed="'+esc(e.id)+'">View</button>',
+   '<button class="secondary" data-restore-reference="'+esc(e.id)+'">Restore</button>')).join('')+
+   examples.map(({entry:t,x})=>row(x.label,t.title,
+    '<button class="text-button" data-view-example="'+esc(exampleToken(t.id,x.id))+'">View</button>',
+    '<button class="secondary" data-restore-example="'+esc(exampleToken(t.id,x.id))+'">Restore</button>')).join('')+
+   (!removed.length&&!examples.length?'<p class="removed-empty">Everything is back in your library.</p>':'');
  }
- function setBusy(value){busy=value;document.querySelectorAll('#remove-library-reference,#restore-library-reference,#undo-library-remove,[data-restore-reference]').forEach(b=>b.disabled=value);}
+ function setBusy(value){busy=value;document.querySelectorAll('#remove-library-reference,#restore-library-reference,#undo-library-remove,#toggle-example-visibility,[data-restore-reference],[data-restore-example]').forEach(b=>b.disabled=value);}
  async function reply(response){
   if(!response.headers.get('Content-Type')?.includes('application/json'))throw Error('The library could not be changed. Restart the local studio and try again.');
   const data=await response.json();if(!response.ok)throw Error(data.error||'The library could not be changed.');return data;
@@ -42,10 +57,10 @@ window.LibraryVisibility=(()=>{
    await reply(await fetch('/reference-visibility',{method:'POST',headers:{'Content-Type':'application/json','X-Studio-Action':'reference-visibility'},body:JSON.stringify({id,action:remove?'remove':'restore',revision:state.revision})}));saved=true;
    await refreshBrowse();
    if(remove){
-    undo=id;$('#library-undo span').textContent='“'+e.title+'” removed from the library.';$('#library-undo').hidden=false;
+    undo={id};$('#library-undo span').textContent='“'+e.title+'” removed from the library.';$('#library-undo').hidden=false;
     if(active?.id===id&&!isTech(active))closeStyle();
    }else{
-    if(undo===id){undo=null;$('#library-undo').hidden=true;}
+    if(undo?.id===id&&!undo.example){undo=null;$('#library-undo').hidden=true;}
     if(active&&!isTech(active)&&active.id===id)details(source(id));
     if(noticeId===id)$('#removed-reference-notice').hidden=true;
     notify('“'+e.title+'” restored to the library.');
@@ -53,18 +68,53 @@ window.LibraryVisibility=(()=>{
   }catch(error){status.textContent=saved?'Your change was saved. Refresh the studio to see it.':error instanceof TypeError?'Couldn’t reach your local studio. Try again.':error.message;}
   finally{setBusy(false);if(saved&&remove&&!$('#library-undo').hidden&&window.Studio?.currentSection==='library'&&!document.querySelector('dialog[open]'))$('#undo-library-remove').focus();}
  }
+ async function changeExample(token,remove,status){
+  const pick=selectionItem(token);if(busy||!pick?.x)return;
+  const {entry:t,x}=pick,expected=isExampleRemoved(t,x);
+  const params=new URLSearchParams({id:t.id,example:x.id});
+  setBusy(true);status.textContent='';let saved=false;
+  try{
+   const state=await reply(await fetch('/reference-visibility?'+params,{cache:'no-store'}));
+   if(state.removed!==expected)throw Error('This example changed in another window. Refresh before trying again.');
+   await reply(await fetch('/reference-visibility',{method:'POST',headers:{'Content-Type':'application/json','X-Studio-Action':'reference-visibility'},
+    body:JSON.stringify({id:t.id,example_id:x.id,action:remove?'remove':'restore',revision:state.revision})}));
+   saved=true;await refreshBrowse();
+   if(remove){
+    undo={id:token,example:true};
+    $('#library-undo span').textContent='“'+x.label+'” removed from the library.';
+    $('#library-undo').hidden=false;
+   }else if(undo?.id===token){undo=null;$('#library-undo').hidden=true;}
+   if(examplePick===token&&$('#style-dialog').open){
+    exampleDetails(t,x);
+    if(!isTech(active))renderReferenceTechniques(source(active.id));
+    else showTechnique(t.id,x.id);
+   }
+  }catch(error){status.textContent=saved?'Your change was saved. Refresh the studio to see it.':error.message;}
+  finally{setBusy(false);}
+ }
+ $('#toggle-example-visibility').addEventListener('click',()=>{
+  if(examplePick)changeExample(examplePick,!removedExamples.has(examplePick),$('#example-visibility-status'));
+ });
  $('#remove-library-reference').addEventListener('click',()=>{if(active&&!isTech(active))change(active.id,true,$('#library-removal-error'));});
  $('#restore-library-reference').addEventListener('click',()=>{if(noticeId)change(noticeId,false,$('#detail-quick-status'));});
- $('#undo-library-remove').addEventListener('click',()=>{if(undo)change(undo,false,$('#library-undo span'));});
+ $('#undo-library-remove').addEventListener('click',()=>{if(undo)(undo.example?changeExample:change)(undo.id,false,$('#library-undo span'));});
  $('#dismiss-library-undo').addEventListener('click',()=>{$('#library-undo').hidden=true;});
  $('#open-removed-references').addEventListener('click',async()=>{
   $('#removed-references-status').textContent='';renderRemoved();dialog.showModal();
   try{await refreshBrowse();}catch{$('#removed-references-status').textContent='Could not refresh. Showing the last loaded references.';}
  });
  dialog.addEventListener('click',event=>{
+  const restoreExample=event.target.closest('[data-restore-example]');
+  if(restoreExample)return changeExample(restoreExample.dataset.restoreExample,false,$('#removed-references-status'));
+  const viewExample=event.target.closest('[data-view-example]');
+  if(viewExample){
+   const pick=selectionItem(viewExample.dataset.viewExample);
+   if(pick){dialog.close();showTechnique(pick.entry.id,pick.x.id);}
+   return;
+  }
   const restore=event.target.closest('[data-restore-reference]');if(restore)return change(restore.dataset.restoreReference,false,$('#removed-references-status'));
   const view=event.target.closest('[data-view-removed]');if(view){dialog.close();showStyle(view.dataset.viewRemoved);}
  });
  dialog.addEventListener('cancel',event=>{if(busy)event.preventDefault();});
- return {details,hideDetails,techniqueNotice,refresh};
+ return {details,hideDetails,techniqueNotice,exampleDetails,refresh};
 })();

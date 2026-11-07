@@ -1,8 +1,8 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),{readFileSync}=require('node:fs'),{join}=require('node:path'),{runInNewContext}=require('node:vm');
 function library(){
  const entries=[{id:'video',title:'Original video',creator:'Creator',poster:'cover.png',media_path:'source.mp4',collection:'reference',analysis_status:'analyzed',summary:'A real reference.'}],technique={id:'type',title:'Typography',examples:[{id:'first',style_id:'video',label:'First treatment',poster:'first.png',start:0,end:2},{id:'second',style_id:'video',label:'Second treatment',poster:'second.png',start:4,end:6}]};
- const calls=[],notes=[{id:'note-id',slide:null,text:'Use restrained type.'}];let stale=false,changed=false;
- const context={window:{},exact:t=>Math.floor(t/60)+':'+(t%60).toFixed(2).padStart(5,'0').replace(/0+$/,'').replace(/\.$/,''),URL,URLSearchParams,localStorage:{getItem:()=>null},selected:new Set(['type']),item:id=>id==='type'?technique:entries.find(e=>e.id===id),source:id=>entries.find(e=>e.id===id),isTech:e=>!!e.examples,isCarousel:()=>false,isRemoved:()=>false,example:()=>technique.examples[0],referenceUrl:(id,example)=>'http://localhost/#'+(example?'technique='+id+'&example='+example:'style='+id),fetch:async(url,options={})=>{
+ const calls=[],notes=[{id:'note-id',slide:null,text:'Use restrained type.',content_revision:'exact-note-revision'}];let stale=false,changed=false;
+ const context={window:{},noteSession:null,exact:t=>Math.floor(t/60)+':'+(t%60).toFixed(2).padStart(5,'0').replace(/0+$/,'').replace(/\.$/,''),URL,URLSearchParams,localStorage:{getItem:()=>null},selected:new Set(['type']),item:id=>id==='type'?technique:entries.find(e=>e.id===id),source:id=>entries.find(e=>e.id===id),isTech:e=>!!e.examples,isCarousel:()=>false,isRemoved:()=>false,example:()=>technique.examples[0],referenceUrl:(id,example)=>'http://localhost/#'+(example?'technique='+id+'&example='+example:'style='+id),fetch:async(url,options={})=>{
   calls.push({url,body:options.body&&JSON.parse(options.body)});
   if(url.startsWith('/reference-notes'))return {ok:true,json:async()=>({context_revision:'source-revision',notes})};
   const rows=JSON.parse(options.body).references;
@@ -32,6 +32,20 @@ test('restoring a project draft keeps distinct examples and filters malformed or
  const rows=h.api.restore([base,base,{...base,example_id:'second',note:'Keep me'},null,{reference_id:'bad'}]);assert.equal(rows.length,2);assert.equal(rows[1].example_id,'second');assert.equal(rows[1].note,'Keep me');
 });
 test('an empty inspiration choice requires no library request',async()=>{const h=library();await h.api.validate([]);assert.equal(h.api.text([]),'');assert.equal(h.calls.length,0);});
+test('project inspiration retains exact saved-note revisions through draft restore and copying',async()=>{
+ const h=library(),row=await h.api.capture({reference_id:'type',example_id:'second',slide:null});
+ assert.deepEqual(h.calls.at(-1).body.references[0].note_revisions,{'note-id':'exact-note-revision'});
+ const restored=h.api.restore(JSON.parse(JSON.stringify([row])));await h.api.validate(restored);
+ assert.deepEqual(h.calls.at(-1).body.references[0].note_revisions,{'note-id':'exact-note-revision'});
+});
+test('new inspiration uses the current editing request while an existing project draft keeps its captured request',async()=>{
+ const h=library();h.context.noteSession='3ec68fa2-8cd8-4e57-96cb-f40829eddd9c';
+ const row=await h.api.capture({reference_id:'type',example_id:'second',slide:null});
+ assert.match(h.calls[0].url,/selection=3ec68fa2/);
+ assert.equal(h.calls[1].body.references[0].selection_id,h.context.noteSession);
+ h.context.noteSession='af733f9a-ac0a-4b3f-a4c0-72cf9fa2cd6a';
+ await h.api.validate([row]);assert.equal(h.calls.at(-1).body.references[0].selection_id,row.selection_id);
+});
 
 test('project timestamps including zero stay with the exact example in the copied request',async()=>{
  const h=library(),row=await h.api.capture({reference_id:'type',example_id:'second',slide:null});row.note='Use the word emphasis';row.time=4.25;assert.match(h.api.text([row]),/Second treatment — At 0:04.25: Use the word emphasis/);assert.match(h.api.text([row]),/example=second/);const first=await h.api.capture({reference_id:'type',example_id:'first',slide:null});first.time=0;assert.match(h.api.text([first]),/At 0:00/);

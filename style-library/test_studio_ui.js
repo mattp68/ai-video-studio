@@ -1,4 +1,4 @@
-const {test}=require('node:test'),assert=require('node:assert/strict'),{readFileSync}=require('node:fs'),{join}=require('node:path'),{runInNewContext}=require('node:vm');
+const {test}=require('node:test'),assert=require('node:assert/strict'),{readFileSync}=require('node:fs'),{join}=require('node:path'),{createContext,runInContext,runInNewContext}=require('node:vm');
 test('library sorting uses original added dates, with stable undated entries and independent approval times',()=>{
  const app=readFileSync(join(__dirname,'dist/app.js'),'utf8'),start=app.indexOf('function render(){'),end=app.indexOf('\nfunction setView(',start);
  assert.ok(start>=0&&end>start);
@@ -422,6 +422,107 @@ test('initial routing waits for deferred studio modules even when local assets r
  runInNewContext(readFileSync(join(__dirname,'dist/app.js'),'utf8'),context);assert.deepEqual(calls,[]);context.window.Studio={route:()=>{routes++;return true;}};await events.DOMContentLoaded();assert.deepEqual(calls,['/site-settings.json','/catalog.json']);assert.equal(routes,1);
 });
 
+
+function referenceCatalogHarness(initial,storage=new Map()){
+ const nodes=new Map(),events={};
+ const node=selector=>{
+  if(!nodes.has(selector))nodes.set(selector,{value:'all',hidden:true,open:false,options:[{value:'all'}],
+   addEventListener(){},setAttribute(){},close(){}});
+  return nodes.get(selector);
+ };
+ let catalog=initial;
+ const vm=createContext({
+  window:{addEventListener:(name,fn)=>events[name]=fn},
+  document:{readyState:'interactive',querySelector:selector=>['dialog[open]:not(#style-dialog)','#detail-media video'].includes(selector)?null:node(selector),querySelectorAll:()=>[],
+   addEventListener:(name,fn)=>events[name]=fn,body:{classList:{toggle(){}}}},
+  localStorage:{getItem:key=>storage.get(key)??null,setItem:(key,value)=>storage.set(key,value)},
+  fetch:async()=>({ok:true,json:async()=>catalog}),
+ });
+ const run=code=>runInContext(code,vm);
+ run(readFileSync(join(__dirname,'dist/app.js'),'utf8'));
+ return {node,events,run,vm,storage,update:value=>{catalog=value;}};
+}
+test('legacy picks retain their exact example and can be joined by a sibling',async()=>{
+ const legacy='ai-video-studio-selection-v1',choices='ai-video-studio-examples-v1',next='ai-video-studio-selection-v3';
+ const h=referenceCatalogHarness({
+  entries:[{id:'video'}],techniques:[{id:'tech-demo',default_example:'first',
+   examples:[{id:'first',style_id:'video'},{id:'second',style_id:'video'}]}],
+ },new Map([[legacy,'["video","tech-demo"]'],[choices,'{"tech-demo":"second"}']]));
+ await h.vm.window.refreshReferenceCatalog();
+ assert.deepEqual(JSON.parse(h.storage.get(next)).picks,['video','tech-demo@second']);
+ h.run("choices['tech-demo']='first'; toggleSelection('tech-demo@first');");
+ assert.deepEqual(JSON.parse(h.storage.get(next)).picks,['video','tech-demo@second','tech-demo@first']);
+ assert.equal(h.storage.get(legacy),'["video","tech-demo"]');
+});
+test('timestamp selections survive reload alongside an earlier exact technique pick',async()=>{
+ const v2='ai-video-studio-selection-v2',v3='ai-video-studio-selection-v3';
+ const catalog={entries:[{id:'video'}],techniques:[{id:'tech-demo',default_example:'first',
+  examples:[{id:'first',style_id:'video'}]}]};
+ const storage=new Map([[v2,'["tech-demo@first"]']]);
+ const original=referenceCatalogHarness(catalog,storage);
+ await original.vm.window.refreshReferenceCatalog();
+ original.run(`selectedMoments.set('moment:one',{reference_id:'video',time:1.5,context_revision:'fixture',text:'Use this.'});
+  selected.add('moment:one');saveSelection();`);
+ const reopened=referenceCatalogHarness(catalog,storage);
+ await reopened.vm.window.refreshReferenceCatalog();
+ assert.equal(reopened.run('selectionSummary([...selected].map(selectionItem))'),'1 technique · 1 moment');
+ assert.equal(reopened.run("selectionItem('moment:one').moment.text"),'Use this.');
+ reopened.run("removeSelection('moment:one');saveSelection();");
+ assert.deepEqual(JSON.parse(storage.get(v3)),{picks:['tech-demo@first'],moments:{},note_session:null,has_notes:false});
+ assert.equal(storage.get(v2),'["tech-demo@first"]');
+});
+test('editing request scope survives reload and reset storage events refresh other tabs',async()=>{
+ const key='ai-video-studio-selection-v3',scope='fe4ca0b4-7dd5-4ce4-ac12-70369c3ab627';
+ const record={picks:['video'],moments:{},note_session:scope,has_notes:true};
+ const h=referenceCatalogHarness({entries:[{id:'video'}],techniques:[]},new Map([[key,JSON.stringify(record)]]));
+ await h.vm.window.refreshReferenceCatalog();assert.equal(h.run('noteSession'),scope);assert.equal(h.run('hasBorrowingNotes'),true);
+ let refreshes=0;h.vm.window.ReferenceNotes={syncSession(){refreshes++;}};
+ const reset={picks:[],moments:{},note_session:'aedfe4ed-efae-422a-af91-37fe037d94db',has_notes:false};
+ h.events.storage({key,newValue:JSON.stringify(reset)});
+ assert.equal(h.run('noteSession'),reset.note_session);assert.equal(h.run('selected.size'),0);assert.equal(h.run('hasBorrowingNotes'),false);assert.equal(refreshes,1);
+ h.events.storage({key,newValue:JSON.stringify({...reset,picks:['video']})});assert.equal(refreshes,1);assert.equal(h.run('selected.size'),1);
+});
+test('legacy jump points share the technique timeline until the current source has been reviewed',async()=>{
+ const reference={id:'video',version:'v1',media_path:'references/source.mp4',source_sha256:'fixture-hash',
+  moments:[{time:4,label:'Later observation'},{time:0.5,label:'Opening observation'}]};
+ const h=referenceCatalogHarness({entries:[reference],techniques:[{id:'tech-demo',default_example:'excerpt',
+  examples:[{id:'excerpt',style_id:'video',source_version:'v1',source_path:reference.media_path,start:2,end:3}]}]});
+ await h.vm.window.refreshReferenceCatalog();
+ const times=reviewHash=>JSON.parse(h.run("JSON.stringify(referenceTechniqueRows({...source('video'),technique_review_sha256:"+
+  JSON.stringify(reviewHash)+"}).map(row=>row.time))"));
+ assert.deepEqual(times('earlier-hash'),[0.5,2,4]);
+ assert.deepEqual(times('fixture-hash'),[2]);
+ assert.equal(h.run("source('video').moments.length"),2);
+});
+test('clicking the active excerpt again restores the full-video time and retains the selection',async()=>{
+ const reference={id:'video',version:'v1',media_path:'references/source.mp4'};
+ const h=referenceCatalogHarness({entries:[reference],techniques:[{id:'tech-demo',default_example:'excerpt',
+  examples:[{id:'excerpt',style_id:'video',source_version:'v1',source_path:reference.media_path,start:2,end:3}]}]});
+ await h.vm.window.refreshReferenceCatalog();
+ const query=h.vm.document.querySelector;
+ const video={currentTime:9};
+ h.vm.document.querySelector=selector=>selector==='#detail-media video'?video:query(selector);
+ h.vm.ranges=[];
+ h.run(`active=source('video');positionBorrowControls=()=>{};updateQuickCopy=()=>{};
+  setVideoRange=(range,time,play=false)=>ranges.push([range?.id??null,time,play]);
+  toggleSelection('tech-demo@excerpt');
+  playSourceExcerpt('tech-demo@excerpt');playSourceExcerpt('tech-demo@excerpt');`);
+ assert.equal(JSON.stringify(h.vm.ranges),'[["excerpt",2,true],[null,9,false]]');
+ assert.equal(h.run('sourceExcerpt'),null);
+ assert.equal(h.run("selected.has('tech-demo@excerpt')"),true);
+});
+test('returning from chat refreshes an open pending reference to the saved preview',async()=>{
+ const pending={id:'video',analysis_status:'not_analyzed'};
+ const h=referenceCatalogHarness({entries:[pending]});
+ await h.vm.window.refreshReferenceCatalog();
+ h.node('#style-dialog').open=true;
+ h.vm.window.Studio={currentSection:'library'};
+ h.vm.shown=[];
+ h.run("active=source('video'); updateControls=()=>{}; render=()=>{}; showStyle=(id,time)=>shown.push([id,time]);");
+ h.update({entries:[{...pending,analysis_status:'partial',media_path:'references/source.mp4'}]});
+ await h.events.focus();
+ assert.equal(JSON.stringify(h.vm.shown),'[["video",null]]');
+});
 
 test('script approval saves the exact version and reveals a separate recording handoff with retained hooks and feedback',async()=>{
  const h=scriptEditor({hooks:[{id:'current',opening:'Current draft.'},{id:'other',opening:'Another hook.\n\nA bridge.'}]});

@@ -1,5 +1,6 @@
 """Local borrowing notes for exact references; no AI invocation or source fetching."""
 from datetime import datetime, timezone
+import copy
 import hashlib
 import json
 import math
@@ -92,15 +93,32 @@ def context(reference_id, example_id=None):
             'source': snapshot, 'catalog_hash': hashlib.sha256(catalog_bytes).hexdigest()}
 
 
-def current(reference_id, example_id=None):
+def selection_scope(value):
+    if value is not None:
+        try:
+            if not isinstance(value, str) or str(uuid.UUID(value)) != value:
+                raise ValueError()
+        except (ValueError, TypeError, AttributeError):
+            raise NoteError('Choose a valid editing request.', 400)
+    return value
+
+
+def current(reference_id, example_id=None, selection_id=None):
+    selection_scope(selection_id)
     with index.STATE_LOCK:
         storage.check_storage()
         ctx = context(reference_id, example_id)
         _, data, _ = read()
-        notes = [n for n in data['notes'] if n.get('reference_id') == reference_id and n.get('example_id') == example_id]
+        notes = [n for n in data['notes'] if n.get('reference_id') == reference_id and n.get('example_id') == example_id and n.get('selection_id') == selection_id]
         return {**{k: v for k, v in ctx.items() if k not in {'catalog_hash', 'source'}},
-                'notes': [n for n in notes if n.get('context_revision') == ctx['context_revision']],
-                'earlier_notes': [n for n in notes if n.get('context_revision') != ctx['context_revision']]}
+                'selection_id': selection_id,
+                'notes': [{**n, 'content_revision': content_revision(n)} for n in notes if n.get('context_revision') == ctx['context_revision']],
+                'earlier_notes': [{**n, 'content_revision': content_revision(n)} for n in notes if n.get('context_revision') != ctx['context_revision']]}
+
+
+def content_revision(note):
+    return hashlib.sha256(storage.json_bytes({k: note.get(k) for k in
+        ('id', 'reference_id', 'example_id', 'context_revision', 'slide', 'time', 'text', 'focus', 'updated_at')})).hexdigest()
 
 
 def clean_text(value, label, limit, required=False):
@@ -112,8 +130,9 @@ def clean_text(value, label, limit, required=False):
 
 def save(body):
     fields = {'reference_id', 'example_id', 'slide', 'context_revision', 'text', 'time', 'focus', 'request_id', 'legacy_key'}
-    if not isinstance(body, dict) or set(body) != fields:
+    if not isinstance(body, dict) or set(body) not in (fields, fields | {'selection_id'}):
         raise NoteError('Use a valid reference note request.', 400)
+    selection_id = selection_scope(body.get('selection_id'))
     try:
         if not isinstance(body['request_id'], str) or str(uuid.UUID(body['request_id'])) != body['request_id']:
             raise ValueError()
@@ -132,7 +151,7 @@ def save(body):
         if existing:
             if existing.get('request') != body:
                 raise NoteError('This save request already belongs to another note.', 409)
-            return current(body['reference_id'], body['example_id'])
+            return current(body['reference_id'], body['example_id'], selection_id)
         if body['context_revision'] != ctx['context_revision']:
             raise NoteError('This source changed. Reopen it before saving; your draft is kept.', 409)
         slide, time = body['slide'], body['time']
@@ -146,17 +165,23 @@ def save(body):
         if legacy:
             previous = next((n for n in data['notes'] if n.get('legacy_key') == legacy and
                              n.get('reference_id') == body['reference_id'] and n.get('example_id') == body['example_id'] and
+                             n.get('selection_id') == selection_id and
                              n.get('context_revision') == ctx['context_revision']), None)
             if previous:
                 if previous['text'] != text or previous.get('focus', '') != focus:
                     raise NoteError('This earlier-note request already belongs to another note.', 409)
-                return current(body['reference_id'], body['example_id'])
+                return current(body['reference_id'], body['example_id'], selection_id)
+        if body['example_id'] and any(n.get('reference_id') == body['reference_id'] and
+                n.get('example_id') == body['example_id'] and n.get('selection_id') == selection_id and
+                n.get('context_revision') == ctx['context_revision'] for n in data['notes']):
+            raise NoteError('This technique already has direction for this edit. Reopen it and choose Edit; your draft is kept.', 409)
         if len(data['notes']) >= 5000:
             raise NoteError('Ask your assistant to archive older reference notes first.', 409)
         data['notes'].append({'id': body['request_id'], 'created_at': datetime.now(timezone.utc).isoformat(),
                               'reference_id': body['reference_id'], 'example_id': body['example_id'],
                               'context_revision': ctx['context_revision'], 'slide': slide, 'time': time,
                               'text': text, 'focus': focus, 'source': ctx['source'], 'legacy_key': legacy,
+                              'selection_id': selection_id,
                               'request': body})
         encoded = storage.json_bytes(data)
         if len(encoded) > 4_000_000:
@@ -164,7 +189,57 @@ def save(body):
         storage.commit({path: encoded}, {'request_id': body['request_id'], 'operation': 'reference-note'},
                        {path: before, storage.CATALOG.resolve(): ctx['catalog_hash'],
                         **{(index.STUDIO / f['path']).resolve(): f['sha256'] for f in ctx['source']['files']}})
-        return current(body['reference_id'], body['example_id'])
+        return current(body['reference_id'], body['example_id'], selection_id)
+
+
+def edit(body):
+    required = {'reference_id', 'example_id', 'note_id', 'context_revision', 'revision', 'text', 'request_id'}
+    if not isinstance(body, dict) or set(body) not in (required, required | {'selection_id'}):
+        raise NoteError('Use a valid note edit request.', 400)
+    selection_id = selection_scope(body.get('selection_id'))
+    try:
+        for key in ('request_id', 'note_id'):
+            if not isinstance(body[key], str) or str(uuid.UUID(body[key])) != body[key]:
+                raise ValueError()
+    except (ValueError, TypeError, AttributeError):
+        raise NoteError('Choose a saved note and a valid edit request.', 400)
+    revision = body['revision']
+    if not isinstance(revision, str) or len(revision) != 64 or any(c not in '0123456789abcdef' for c in revision):
+        raise NoteError('Refresh this note before editing it.', 400)
+    text = clean_text(body['text'], 'Note', 2000, True)
+    with index.STATE_LOCK:
+        check_writes()
+        ctx = context(body['reference_id'], body['example_id'])
+        path, data, before = read()
+        for saved in data['notes']:
+            for event in saved.get('history', []):
+                if event.get('request', {}).get('request_id') == body['request_id']:
+                    if event['request'] != body:
+                        raise NoteError('This edit request was already used for another change.', 409)
+                    return current(body['reference_id'], body['example_id'], selection_id)
+            if saved['id'] == body['request_id']:
+                raise NoteError('Use a new edit request.', 409)
+        note = next((n for n in data['notes'] if n['id'] == body['note_id']), None)
+        if note is None:
+            raise NoteError('This saved note is unavailable.', 404)
+        if (note.get('reference_id') != body['reference_id'] or note.get('example_id') != body['example_id'] or
+                note.get('selection_id') != selection_id or
+                note.get('context_revision') != ctx['context_revision'] or body['context_revision'] != ctx['context_revision']):
+            raise NoteError('This note belongs to another source or example. Reopen the original before editing.', 409)
+        if content_revision(note) != revision:
+            raise NoteError('This note changed elsewhere. Review the latest note before saving; your edit is kept.', 409)
+        stamp = datetime.now(timezone.utc).isoformat()
+        snapshot = copy.deepcopy({k: v for k, v in note.items() if k != 'history'})
+        note.setdefault('history', []).append({'action': 'edit', 'at': stamp, 'request': body, 'before': snapshot})
+        note['text'] = text
+        note['updated_at'] = stamp
+        encoded = storage.json_bytes(data)
+        if len(encoded) > 4_000_000:
+            raise NoteError('Note history is full. Existing notes and your edit are kept.', 409)
+        storage.commit({path: encoded}, {'request_id': body['request_id'], 'operation': 'reference-note-edit'},
+                       {path: before, storage.CATALOG.resolve(): ctx['catalog_hash'],
+                        **{(index.STUDIO / f['path']).resolve(): f['sha256'] for f in ctx['source']['files']}})
+        return current(body['reference_id'], body['example_id'], selection_id)
 
 
 def handoff(body, base_url):
@@ -176,16 +251,34 @@ def handoff(body, base_url):
         out = ['Use this reference:' if len(body['references']) == 1 else 'Use these references:', '']
         seen = set()
         for row in body['references']:
-            if not isinstance(row, dict) or set(row) != {'reference_id', 'example_id', 'slide', 'context_revision', 'note_ids'}:
+            required = {'reference_id', 'example_id', 'slide', 'context_revision', 'note_ids'}
+            if (not isinstance(row, dict) or not required <= set(row) or
+                    set(row) - required - {'direction', 'moment', 'note_revisions', 'selection_id'} or
+                    {'direction', 'moment'} <= set(row)):
                 raise NoteError('Choose valid references and saved notes.', 400)
+            direction = clean_text(row.get('direction', ''), 'Borrowing direction', 2000)
             ctx = context(row['reference_id'], row['example_id'])
+            selection_id = selection_scope(row.get('selection_id'))
+            if direction and not row['example_id'] and (not ctx['has_video'] or ctx['slide_count']):
+                raise NoteError('Choose a video or an exact technique for this direction.', 400)
             ids, slide = row['note_ids'], row['slide']
             if (not isinstance(ids, list) or len(ids) > 5000 or any(not isinstance(i, str) for i in ids) or
                     len(ids) != len(set(ids)) or row['context_revision'] != ctx['context_revision']):
                 raise NoteError('The selected source or notes changed. Review them before copying.', 409)
             if slide is not None and (type(slide) is not int or not 1 <= slide <= ctx['slide_count']):
                 raise NoteError('Choose an exact carousel slide.', 400)
-            token = (row['reference_id'], row['example_id'], slide)
+            moment_time, moment_text = None, ''
+            if 'moment' in row:
+                moment = row['moment']
+                if (not isinstance(moment, dict) or set(moment) != {'time', 'text'} or
+                        row['example_id'] is not None or slide is not None or ids or not ctx['has_video']):
+                    raise NoteError('Choose a moment in the full reference video.', 400)
+                moment_time = moment['time']
+                if (type(moment_time) not in (int, float) or
+                        not 0 <= moment_time <= (ctx['end'] if ctx['end'] is not None else 86400)):
+                    raise NoteError('Choose a time inside the full reference video.', 400)
+                moment_text = clean_text(moment['text'], 'Borrowing direction', 2000)
+            token = (row['reference_id'], row['example_id'], slide, moment_time)
             if token in seen:
                 raise NoteError('Choose each exact reference once.', 400)
             seen.add(token)
@@ -193,8 +286,16 @@ def handoff(body, base_url):
             selected = [n for n in data['notes'] if n['id'] in wanted]
             if len(selected) != len(ids) or any(n.get('reference_id') != row['reference_id'] or
                     n.get('example_id') != row['example_id'] or n.get('context_revision') != ctx['context_revision'] or
+                    n.get('selection_id') != selection_id or
                     (n.get('slide') is not None and n.get('slide') != slide) for n in selected):
                 raise NoteError('Those notes belong to a different source, example or slide.', 409)
+            revisions = row.get('note_revisions')
+            if 'note_revisions' in row:
+                if (not isinstance(revisions, dict) or set(revisions) != wanted or
+                        any(revisions[n['id']] != content_revision(n) for n in selected)):
+                    raise NoteError('A saved note changed. Reopen the notes and review them before copying.', 409)
+            elif any(n.get('history') for n in selected):
+                raise NoteError('A saved note was edited. Reopen the notes before copying.', 409)
             params = {'technique' if row['example_id'] else 'style': row['reference_id']}
             label = ctx['title'] + ' — ' + ctx['creator']
             if row['example_id']:
@@ -203,11 +304,18 @@ def handoff(body, base_url):
             if slide is not None:
                 params['slide'] = slide
                 label += f' · Slide {slide}'
+            if moment_time is not None:
+                params['time'] = str(moment_time)
+                label += f' · Moment at {library.timestamp(moment_time)}'
             out += [label, base_url.rstrip('/') + '/#' + urlencode(params)]
+            if moment_text:
+                out.append(f'What to borrow: {moment_text}')
             for n in selected:
                 position = f"At {library.timestamp(n['time'])}" if n.get('time') is not None else f"Slide {n['slide']}" if n.get('slide') else 'What to borrow'
                 if n.get('focus'):
                     position += ' · ' + n['focus']
                 out.append(f"{position}: {n['text']}")
+            if direction:
+                out.append(f'What to borrow: {direction}')
             out.append('')
         return {'text': '\n'.join(out).rstrip()}

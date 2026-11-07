@@ -28,13 +28,21 @@ October 27 V19: ordinary reference actions are **Copy for chat** and **Add to se
 
 ## Sound, previews and editor access — UX V20
 
-Use a centered dot for a single selected technique example. Keep public cover-image availability separate from analysis: Awaiting analysis and Partly analyzed reflect recorded inspection, not image presence. Missing previews use state-aware copy: Ready for analysis for pending sources, Preview not saved for partial sources, and Video preview unavailable for other saved sources. Cover images never imply playable video.
+Use a centered dot for a single selected technique example. Keep public cover-image availability separate from analysis: Awaiting analysis reflects saved inspection state. Missing previews show whether the source is ready for analysis or video is unavailable in Studio. Cover images never imply playable video.
 
 Open in HyperFrames is a quiet action beside downloads in Edit, tied to a known version-local composition. The explicit launch creates a separate working copy. Sound stays in Edit as a concise expandable summary with the existing timestamped feedback flow. Generated/free sounds are the starting point; owner-provided libraries remain optional and have no assumed connection.
 
-## Analysis-first reference intake — UX V21
+## Reference intake and borrowing
 
-After saving: Reference saved. Next: analyze it. Copy analysis request is the primary explicit clipboard action, with a visible Copied confirmation and paste guidance. Public cover retrieval stays quiet and separate; no user-facing preview-retry controls or cover-status toasts. Pending placeholders explain style notes, useful moments and a preview when available without guaranteeing playable media. Partially analyzed sources retain progress-specific copy. Pending borrowing controls remain available in a secondary Use the saved link section; drafts, saved notes and exact-source copying retain their existing behavior.
+Keep Add reference to a link and Save reference. Edit details carries title, creator and the original note. A new saved link offers Copy analysis request as the next action. In a playable reference, lead with the video and its Techniques. Keep analysis coverage under About this reference. Bring an access issue forward when the user can provide a local copy in chat.
+
+Use one chronological list with short labels, source frames and time ranges for techniques. Clearly label legacy timestamps as jump points until they have been reviewed. The current excerpt plays in the same player. Clicking its row again or using Back to full video returns to the earlier position. Keep + as the single action on each closed row. Place Copy this technique for chat beside the open excerpt and start direction collapsed when the example changes, retaining each example's draft. Show the creator and original source link under the title, and Copy full reference beneath the description. Put Add full video to selection in Reference options. Keep Add moment and its current time on the left and Selection and Copy for chat together on the right. Reserve space for the time so scrubbing keeps the controls in place. Show excerpt and moment counts on the source cards, with the card’s checkmark reserved for a whole-video pick. The count updates in place as techniques are picked. Add moment pauses playback and replaces the toolbar with the captured timestamp, an optional note, Cancel and Add to selection. After confirmation, restore the toolbar and offer Undo.
+
+Saving a direction note from an open technique also selects that exact example and confirms both actions. Existing picks remain selected. Use a thin inset focus outline for borrowing-note fields and the moment editor.
+
+Use one editable direction per selected technique for the current edit. An empty technique offers Add direction. Once saved, show its text under Your direction with Edit, followed by Save changes / Cancel while editing. Keep the saved text visible when reviewing a selection. Remove the empty new-note composer and repeated notes/count headings. Preserve the note's identity and source position, show saved changes in both views and copy the revised text. Keep earlier multiple notes individually readable and editable; retain older unfinished additions in a quiet recovery disclosure. Retain conflicting edits beside the latest saved wording for an explicit choice. Separately selected moments have their own direction.
+
+Borrowing direction belongs to the current edit. Clear resets all selected references, techniques, moments, saved borrowing notes and unfinished direction together across videos. Keep the existing selection bar in place with a cleared confirmation, Undo and Dismiss. Undo survives reload and stays available until new editing work starts. Browsing alone keeps it. Synchronize the reset across open tabs. Keep reusable library entries and their analysis intact.
 
 ## Review and script context — UX V23
 

@@ -9,7 +9,7 @@ window.StartReferences=(()=>{
  }
  const noteValue=r=>({note:typeof r?.note==='string'?r.note.slice(0,2000):'',time:typeof r?.time==='number'&&Number.isFinite(r.time)&&r.time>=0?Math.round(r.time*100)/100:null,focus:typeof r?.focus==='string'?r.focus.slice(0,1000):''});
  const hasNote=r=>{const n=noteValue(r);return !!(n.note.trim()||n.time!==null||n.focus.trim());};
- const target=t=>({reference_id:t.reference_id,example_id:t.example_id||null,slide:t.slide||null});
+ const target=t=>({reference_id:t.reference_id,example_id:t.example_id||null,slide:t.slide||null,selection_id:t.selection_id??null});
  function resolve(t){
   const e=item(t.reference_id);if(!e)throw Error('This reference is no longer available. Remove it or choose another.');
   const x=isTech(e)?e.examples.find(x=>x.id===t.example_id):null;
@@ -22,12 +22,14 @@ window.StartReferences=(()=>{
    start:x?.start||0,end:x?.end??s.duration??null,status:s.analysis_status,description:e.summary||'',removed:isRemoved(s)};
  }
  async function json(response){const data=await response.json();if(!response.ok)throw Error(data.error||'Could not load this reference. Try again.');return data;}
- async function handoff(rows){return json(await fetch('/reference-handoff',{method:'POST',headers:{'Content-Type':'application/json','X-Studio-Action':'reference-handoff'},body:JSON.stringify({references:rows.map(r=>({...target(r),context_revision:r.context_revision,note_ids:r.note_ids}))})}));}
+ async function handoff(rows){return json(await fetch('/reference-handoff',{method:'POST',headers:{'Content-Type':'application/json','X-Studio-Action':'reference-handoff'},body:JSON.stringify({references:rows.map(r=>({...target(r),context_revision:r.context_revision,note_ids:r.note_ids,...(r.note_revisions?{note_revisions:r.note_revisions}:{})}))})}));}
  async function capture(t){
+  t={...t,selection_id:'selection_id' in t?t.selection_id:noteSession};
   const details=resolve(t),params=new URLSearchParams({id:t.reference_id});if(t.example_id)params.set('example',t.example_id);
+  if(t.selection_id)params.set('selection',t.selection_id);
   const data=await json(await fetch('/reference-notes?'+params,{cache:'no-store'}));
   const notes=(data.notes||[]).filter(n=>n.slide===null||n.slide===(t.slide||null));
-  const row={...target(t),context_revision:data.context_revision,note_ids:notes.map(n=>n.id),note:'',details};
+  const row={...target(t),context_revision:data.context_revision,note_ids:notes.map(n=>n.id),note_revisions:Object.fromEntries(notes.map(n=>[n.id,n.content_revision])),note:'',details};
   const result=await handoff([row]);row.message=result.text.split('\n').slice(2).join('\n').trim();return row;
  }
  function text(rows){
@@ -53,7 +55,12 @@ window.StartReferences=(()=>{
  }
  function selectedTargets(){
   let slides={};try{slides=JSON.parse(localStorage.getItem('ai-video-studio-reference-slides-v1')||'{}');}catch{}
-  return [...selected].map(id=>{const e=item(id);return e?{reference_id:id,example_id:isTech(e)?example(e,false).id:null,slide:isCarousel(e)&&Number.isInteger(slides?.[id])?slides[id]:null}:null;}).filter(Boolean);
+  return [...selected].map(token=>{
+   const [id,exampleId]=token.split('@'),e=item(id);
+   if(!e||exampleId&&!e.examples?.some(x=>x.id===exampleId))return null;
+   return {reference_id:id,example_id:isTech(e)?exampleId||example(e,false).id:null,
+    slide:isCarousel(e)&&Number.isInteger(slides?.[id])?slides[id]:null,selection_id:noteSession};
+  }).filter(Boolean);
  }
  function create({dialog,get,set,showPicker,state=()=>{},level=()=>{},getDrafts=()=>({}),setDrafts=()=>{},getLinkDraft=()=>'',setLinkDraft=()=>{}}){
   const summary=dialog.querySelector('#start-reference-summary'),host=dialog.querySelector('#start-picker');
