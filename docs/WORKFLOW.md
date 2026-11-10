@@ -13,6 +13,12 @@ For carousels: set dimensions in the brief, adapt the hook for swiping, keep eac
 
 At every meaningful handoff follow HANDOFF.md: status, review notes, safe build command and the navigation descriptor. Never assume an export filename means approved.
 
+## Optional 3D B-roll
+
+Choose Blender during storyboarding when physical depth, shadows, a camera move, or reusable 3D geometry helps explain a beat. For example, use it for a physical key press or for separate objects coming together. Keep captions, typography, and genuine app evidence readable in the browser composition. The editing assistant chooses the tool and shows the visual treatment in the normal storyboard.
+
+Check the installed executable with `python3 scripts/setup.py --check` and verify the render path with `python3 scripts/blender_smoke.py`. If Blender is unavailable or unusable, use a suitable HyperFrames treatment or source footage. Discuss installation only when the shot benefits materially. Render trusted scenes locally. Keep the editable scene, dependent assets, renderer version, settings, and rendered insert with the project. Match the edit's timing and color, and use the render as project-local B-roll. Use an alpha-capable intermediate for an overlay and verify it over the actual picture.
+
 ## Script before recording
 
 Choose Help me write a script in the video starter to work from an idea, draft or creator reference. The request loads the shared writing guidance and this installation's private writing preferences. Develop the script in chat; the assistant creates the project and saves the script/brief. Script sits before Spoken cut and stays optional. Approve the current script when you are ready to record. Record outside the studio, then copy the recording request and attach the raw footage in chat to start the spoken cut. Edit my footage starts with a brief, an optional recorded script and optional inspiration. See SCRIPTING.md.

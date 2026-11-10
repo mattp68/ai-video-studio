@@ -54,10 +54,26 @@ class RendererUpdateTests(unittest.TestCase):
             with patch.object(setup,'ROOT',root),patch.object(setup.subprocess,'run',side_effect=OSError('unavailable')):
                 with self.assertRaisesRegex(SystemExit,'Could not verify'):setup.guard_renderer_update()
 
+class BlenderCapabilityTests(unittest.TestCase):
+    def test_missing_or_failed_blender_stays_optional(self):
+        with patch.object(setup.platform, 'system', return_value='Linux'):
+            with patch.object(setup.shutil, 'which', return_value=None):
+                self.assertEqual(setup.blender_capability()['status'], 'not_installed')
+            with tempfile.TemporaryDirectory() as directory:
+                tool = Path(directory) / 'blender'
+                tool.touch()
+                with patch.object(setup.shutil, 'which', return_value=str(tool)):
+                    with patch.object(setup.subprocess, 'run', side_effect=OSError('unavailable')):
+                        self.assertEqual(setup.blender_capability()['status'], 'unavailable')
+                    result = setup.subprocess.CompletedProcess([], 0, stdout='Blender 5.2.2 LTS')
+                    with patch.object(setup.subprocess, 'run', return_value=result):
+                        report = setup.blender_capability()
+                    self.assertEqual((report['status'], report['version']), ('ready_for_smoke', '5.2.2'))
+
 class CapabilityTests(unittest.TestCase):
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory();self.root=Path(self.tmp.name)
-        self.patches=[patch.object(setup,'ROOT',self.root),patch.object(setup,'PY',self.root/'.venv/bin/python'),
+        self.patches=[patch.object(setup,'ROOT',self.root),patch.object(setup,'blender_capability',return_value={'status':'not_installed'}),patch.object(setup,'PY',self.root/'.venv/bin/python'),
                       patch.object(setup.shutil,'which',return_value=None),patch.object(setup,'node_supported',return_value=False),
                       patch.object(setup,'local_package_present',return_value=False),
                       patch.object(setup.platform,'system',return_value='Darwin'),patch.object(setup.platform,'machine',return_value='arm64')]

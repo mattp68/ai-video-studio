@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Blender B-roll handoff check</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; }
+    #blender-check { position: relative; background: #16221d; color: #f7f5ed; font: 700 21px sans-serif; }
+    #insert { position: absolute; top: 60px; left: 0; width: 320px; height: 320px; }
+    #label { position: absolute; top: 14px; left: 22px; margin: 0; }
+  </style>
+</head>
+<body>
+  <main id="blender-check" data-composition-id="blender-check" data-no-timeline data-width="320" data-height="440" data-duration="0.4">
+    <video id="insert" class="clip" src="assets/insert.mp4" data-start="0" data-duration="0.4" data-track-index="0" data-track-kind="video" muted playsinline></video>
+    <p id="label" class="clip" data-start="0" data-duration="0.4" data-track-index="1" data-track-kind="graphics">Blender insert</p>
+  </main>
+</body>
+</html>

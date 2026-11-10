@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import platform
+import re
 import shutil
 import subprocess
 import sys
@@ -32,6 +33,31 @@ def node_supported():
         version = tuple(int(part) for part in result.stdout.strip().lstrip('v').split('.'))
         return len(version) == 3 and version >= (22, 12, 0)
     except (OSError, ValueError, subprocess.SubprocessError): return False
+
+def blender_capability():
+    """Find and probe an installed Blender without changing media readiness."""
+    candidates = [shutil.which('blender')]
+    if platform.system() == 'Darwin':
+        app = Path('Blender.app/Contents/MacOS/Blender')
+        candidates.extend(str(folder / app) for folder in
+                          (Path('/Applications'), Path.home() / 'Applications'))
+    found = False
+    for executable in dict.fromkeys(candidates):
+        if not executable or not Path(executable).is_file():
+            continue
+        found = True
+        try:
+            result = subprocess.run([executable, '--version'], capture_output=True,
+                                    text=True, timeout=10, check=True)
+        except (OSError, subprocess.SubprocessError):
+            continue
+        match = re.search(r'^Blender (\d+\.\d+\.\d+)', result.stdout, re.MULTILINE)
+        if match:
+            return {'status': 'ready_for_smoke', 'version': match[1], 'executable': executable,
+                    'detail': 'Optional local 3D. Run scripts/blender_smoke.py to check rendering and compositing.'}
+    if found:
+        return {'status': 'unavailable', 'detail': 'Blender was found but its version could not be verified.'}
+    return {'status': 'not_installed', 'detail': 'Optional local 3D. The standard editing workflow is available without Blender.'}
 
 def guard_renderer_update():
     """Never replace dependencies underneath this installation's live editors."""
@@ -67,6 +93,7 @@ def capability_report():
             'capabilities': {
                 'studio': {'status': 'ready' if registries else 'run_setup', 'detail': 'Use --studio-only for the home base without media packages.'},
                 'rendering': {'status': 'ready_for_smoke' if ready else 'missing_dependencies', 'detail': 'Dependency check only. Run scripts/smoke.py to verify an actual render and browser.'},
+                'blender': blender_capability(),
                 'transcription': {'status': 'available' if speech else 'not_installed' if apple_silicon else 'unsupported_platform', 'detail': 'Optional --transcription on Apple Silicon macOS; model downloads on first use. Else provide a word-timed transcript.'},
                 'reference_browser': {'status': 'check_in_chat', 'detail': 'Your assistant must verify its browser connection and source access. Sign in in that browser if needed; provide a file if access fails.'},
                 'basic_sound_effects': {'status': 'available' if tools['ffmpeg'] else 'needs_ffmpeg', 'detail': 'The assistant can synthesize simple sounds locally with code/FFmpeg. Audition the result; no paid library is required.'},

@@ -2,6 +2,8 @@
 
 Open an editing chat from the studio folder. Ask your assistant to update AI Video Studio while preserving projects, media, references, settings and saved feedback. The Updates page has a ready-to-copy request and links to the official repository and releases: https://github.com/mattp68/ai-video-studio . Checking releases is separate from installing an update.
 
+Blender is an optional local capability. The update adds detection and editing guidance. If Blender is already installed, `python3 scripts/setup.py --check` reports its version and `python3 scripts/blender_smoke.py` verifies a disposable render. The normal setup and update workflow works without it.
+
 ## Existing installations with media tooling
 
 The copied Updates request is an assistant handoff, not an automatic installer. In the existing studio, read this release's guide, compare/checkpoint its source and preserve its owner data, then update the reviewed application files and both package files together. A studio-only installation remains studio-only. For a media installation, verify Node >=22.12.0, then use the updated scripts/setup.py for the pinned media dependencies and render browser; keep --transcription only where the owner already uses it. Never use an unpinned HyperFrames upgrade or npm audit fix --force. Custom installations without the standard setup script must follow the same preview-inventory and source-checkpoint rules before any manual package commands.

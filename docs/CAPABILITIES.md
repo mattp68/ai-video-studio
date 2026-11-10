@@ -9,6 +9,7 @@ Run `python3 scripts/setup.py --check` for a local capability report. A status o
 | Projects, library, saved feedback and review decisions | Python standard library and empty personal registries | Run setup, then start the local HTTP service. |
 | Cuts, proxies and audio processing | Helpers use FFmpeg/FFprobe | System tools must be installed. |
 | Motion graphics and compositing | Pinned HyperFrames, GSAP and render-browser download | Run the full synthetic smoke workflow. |
+| Optional local 3D B-roll | Existing Blender installation | Run `python3 scripts/blender_smoke.py` to verify rendering and the HyperFrames handoff. |
 | Contact sheets | Project-local Pillow | Installed by full setup. |
 | Speech/word timing | Optional MLX Whisper | Apple Silicon macOS only; model downloads on first use. Other platforms need a supplied transcript or another explicitly authorized transcription tool. |
 | Reference browsing | Assistant’s available browser tools | Verify the connection, site access and login in that specific browser/profile. |
