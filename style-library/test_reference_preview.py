@@ -15,7 +15,7 @@ class PreviewTests(unittest.TestCase):
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory();self.root=Path(self.tmp.name).resolve();self.base=self.root/'style-library';(self.base/'dist/assets').mkdir(parents=True)
         self.catalog=self.base/'catalog.json';self.entry={'id':'sample','collection':'reference','source_url':'https://example.com/video','analysis_status':'partial','reference_note':'The cards I like','poster':'assets/link-reference.svg','title':'Sample'}
-        self.catalog.write_text(json.dumps({'entries':[self.entry],'techniques':[],'removed_references':{'sample':{'removed_at':'2026-10-27T00:00:00Z'}}}))
+        self.catalog.write_text(json.dumps({'entries':[self.entry],'techniques':[],'removed_references':{'sample':{'removed_at':'2026-10-27T00:00:00Z'}}}), encoding='utf-8')
         self.patches=[patch.object(index,'STUDIO',self.root),patch.object(index,'REGISTRY',self.base/'projects.json'),patch.object(storage,'BASE',self.base),patch.object(storage,'CATALOG',self.catalog),patch.object(storage,'JOURNALS',self.base/'runtime/review-actions'),patch.object(intake,'CATALOG',self.catalog)]
         for p in self.patches:p.start()
         self.image=b'\x89PNG\r\n\x1a\nfixture'
@@ -24,7 +24,7 @@ class PreviewTests(unittest.TestCase):
         self.tmp.cleanup()
     def test_public_cover_changes_only_image_metadata(self):
         with patch.object(preview,'retrieve',return_value=(self.image,'.png','https://cdn.example.com/cover.png')):result=preview.save({'id':'sample'})
-        data=json.loads(self.catalog.read_text());entry=data['entries'][0]
+        data=json.loads(self.catalog.read_text(encoding='utf-8'));entry=data['entries'][0]
         self.assertTrue(result['available']);self.assertEqual(entry['analysis_status'],'partial');self.assertEqual(entry['reference_note'],self.entry['reference_note']);self.assertEqual(data['removed_references']['sample']['removed_at'],'2026-10-27T00:00:00Z')
         self.assertEqual((self.base/'dist'/entry['poster']).read_bytes(),self.image)
     def test_missing_cover_keeps_catalog_byte_for_byte(self):
@@ -32,13 +32,13 @@ class PreviewTests(unittest.TestCase):
         with patch.object(preview,'retrieve',side_effect=preview.PreviewError('Unavailable')):self.assertFalse(preview.save({'id':'sample'})['available'])
         self.assertEqual(before,self.catalog.read_bytes())
     def test_existing_image_or_media_is_never_replaced(self):
-        entry={**self.entry,'poster':'assets/real.jpg'};self.catalog.write_text(json.dumps({'entries':[entry]}))
+        entry={**self.entry,'poster':'assets/real.jpg'};self.catalog.write_text(json.dumps({'entries':[entry]}), encoding='utf-8')
         with patch.object(preview,'retrieve') as get:self.assertFalse(preview.save({'id':'sample'})['changed']);get.assert_not_called()
     def test_concurrent_entry_edit_is_preserved(self):
         def change(url):
-            data=json.loads(self.catalog.read_text());data['entries'][0]['reference_note']='New owner note';self.catalog.write_text(json.dumps(data));return self.image,'.png','https://cdn.example.com/cover.png'
+            data=json.loads(self.catalog.read_text(encoding='utf-8'));data['entries'][0]['reference_note']='New owner note';self.catalog.write_text(json.dumps(data), encoding='utf-8');return self.image,'.png','https://cdn.example.com/cover.png'
         with patch.object(preview,'retrieve',side_effect=change),self.assertRaises(preview.PreviewError) as error:preview.save({'id':'sample'})
-        self.assertEqual(error.exception.status,409);self.assertEqual(json.loads(self.catalog.read_text())['entries'][0]['reference_note'],'New owner note')
+        self.assertEqual(error.exception.status,409);self.assertEqual(json.loads(self.catalog.read_text(encoding='utf-8'))['entries'][0]['reference_note'],'New owner note')
     def test_nonpublic_dns_and_unsafe_urls_are_rejected(self):
         for address in ['127.0.0.1','10.0.0.1','169.254.169.254','::1','::ffff:127.0.0.1']:
             with patch.object(preview.socket,'getaddrinfo',return_value=[(2,1,6,'',(address,443))]),self.assertRaises(preview.PreviewError):preview.addresses('example.com')

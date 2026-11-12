@@ -88,7 +88,7 @@ class ScriptingTests(unittest.TestCase):
         restored = scripting.voice_forget(undo)
         self.assertEqual(next(p for p in restored['preferences'] if p['id'] == body['memory']['id']), body['memory'])
         self.assertEqual(scripting.voice_forget(undo), restored)
-        state = json.loads((self.base/'writing-voice.json').read_text())
+        state = json.loads((self.base/'writing-voice.json').read_text(encoding='utf-8'))
         self.assertTrue(any(p.get('forgotten_at') for v in state['versions'] for p in v['value']))
 
     def test_memory_source_script_validation_and_conflicting_writes_preserve_the_winner(self):
@@ -141,7 +141,7 @@ class ScriptingTests(unittest.TestCase):
         reopened = scripting.script_ready({**body, 'ready': False, 'revision': approved['revision'], 'request_id': str(uuid.uuid4())})
         self.assertFalse(reopened['ready'])
         self.assertFalse(scripting.script_ready(body)['ready'])
-        history = json.loads((self.project/'script-brief.json').read_text())
+        history = json.loads((self.project/'script-brief.json').read_text(encoding='utf-8'))
         self.assertTrue(any(row['value']['ready_script'] == saved['version_id'] for row in history['versions']))
         self.assertEqual({p: p.read_bytes() for p in before}, before)
         self.assertFalse((self.project/'approval-state.json').exists())
@@ -173,7 +173,7 @@ class ScriptingTests(unittest.TestCase):
         second = scripting.voice_save(second_body)
         self.assertEqual(second['preferences'], [])
         self.assertEqual(scripting.voice_save(first_body)['revision'], second['revision'])
-        history = json.loads((self.base/'writing-voice.json').read_text())
+        history = json.loads((self.base/'writing-voice.json').read_text(encoding='utf-8'))
         self.assertEqual(len(history['versions']), 2)
         self.assertEqual(history['versions'][0]['value'][0]['source'], first_body['preferences'][0]['source'])
 
@@ -207,7 +207,7 @@ class ScriptingTests(unittest.TestCase):
         self.assertTrue(scripting.brief_save(self.brief(later['version_id']))['ready'])
         self.assertEqual(self.fixture.registry.read_bytes(), registry)
         self.assertEqual((self.project/'script.txt').read_bytes(), original)
-        self.assertEqual((self.project/'exports/assembled-script-v04.txt').read_text(), 'The selected words.')
+        self.assertEqual((self.project/'exports/assembled-script-v04.txt').read_text(encoding='utf-8'), 'The selected words.')
 
     def test_script_history_keeps_exact_versions(self):
         first = project_script.save(self.fixture.body('First version.'))
@@ -225,18 +225,18 @@ class ScriptingTests(unittest.TestCase):
             scripting.brief_save(stale)
         self.assertEqual(scripting.brief_current('demo'), winner)
         path = self.base/'writing-voice.json'
-        path.write_text('broken owner data')
+        path.write_text('broken owner data', encoding='utf-8')
         with self.assertRaises(ValueError):
             scripting.voice_current()
-        self.assertEqual(path.read_text(), 'broken owner data')
+        self.assertEqual(path.read_text(encoding='utf-8'), 'broken owner data')
 
     def test_symlinked_voice_file_never_writes_outside_the_installation(self):
         target = self.fixture.root/'private.json'
-        target.write_text('keep me')
+        target.write_text('keep me', encoding='utf-8')
         (self.base/'writing-voice.json').symlink_to(target)
         with self.assertRaises(FeedbackError):
             scripting.voice_save({'revision': '0'*64, 'request_id': str(uuid.uuid4()), 'preferences': []})
-        self.assertEqual(target.read_text(), 'keep me')
+        self.assertEqual(target.read_text(encoding='utf-8'), 'keep me')
 
     def test_http_requires_same_origin_explicit_actions_and_private_file_is_not_static(self):
         server = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
@@ -327,7 +327,7 @@ class ScriptIterationTests(unittest.TestCase):
         restore = {**self.choice(result, result['hooks'], {'id': original_id})}
         self.assertEqual(scripting.hook_apply(restore)['version_id'], saved['version_id'])
         self.assertEqual(self.fixture.registry.read_bytes(), registry)
-        self.assertEqual((self.project/'script.txt').read_text(), 'The script I recorded.\n')
+        self.assertEqual((self.project/'script.txt').read_text(encoding='utf-8'), 'The script I recorded.\n')
         self.assertFalse((self.project/'approval-state.json').exists())
 
     def test_hook_retries_never_revert_a_later_script(self):
@@ -385,15 +385,15 @@ class ScriptIterationTests(unittest.TestCase):
         with self.assertRaises(FeedbackError): scripting.feedback_save(self.feedback(saved, '', ''))
 
     def test_iteration_symlinks_and_corrupt_files_are_preserved(self):
-        saved, body = self.hooks(); outside = self.fixture.root/'outside.json'; outside.write_text('private')
+        saved, body = self.hooks(); outside = self.fixture.root/'outside.json'; outside.write_text('private', encoding='utf-8')
         path = self.project/'script-hooks.json'; path.symlink_to(outside)
         with self.assertRaises(ReviewError): scripting.hooks_save(body)
-        self.assertEqual(outside.read_text(), 'private'); path.unlink()
-        path = self.project/'script-feedback.json'; path.write_text('broken owner data')
+        self.assertEqual(outside.read_text(encoding='utf-8'), 'private'); path.unlink()
+        path = self.project/'script-feedback.json'; path.write_text('broken owner data', encoding='utf-8')
         with self.assertRaises(ValueError): scripting.feedback_save(self.feedback(saved))
-        self.assertEqual(path.read_text(), 'broken owner data'); path.unlink(); path.symlink_to(outside)
+        self.assertEqual(path.read_text(encoding='utf-8'), 'broken owner data'); path.unlink(); path.symlink_to(outside)
         with self.assertRaises(ReviewError): scripting.feedback_save(self.feedback(saved))
-        self.assertEqual(outside.read_text(), 'private')
+        self.assertEqual(outside.read_text(encoding='utf-8'), 'private')
 
     def test_hook_file_changed_at_commit_is_not_overwritten_or_applied(self):
         saved, body = self.hooks(); hooks = scripting.hooks_save(body)

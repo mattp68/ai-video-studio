@@ -16,7 +16,7 @@ class Quiet(serve.Handler):
 class SecurityTests(unittest.TestCase):
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory();self.root=Path(self.tmp.name);self.folder=self.root/'references/demo';self.folder.mkdir(parents=True)
-        (self.folder/'video.mp4').write_bytes(b'0123456789');(self.folder/'note.md').write_text('Synthetic note')
+        (self.folder/'video.mp4').write_bytes(b'0123456789');(self.folder/'note.md').write_text('Synthetic note', encoding='utf-8')
         self.e={'id':'demo','media_path':'references/demo/video.mp4','notes':['references/demo/note.md'],'asset_type':'carousel','slides':[{'path':'references/demo/video.mp4'}],'archive_path':'references/demo/package.zip'}
         (self.folder/'package.zip').write_bytes(b'zip fixture')
         self.patches=[patch.object(serve,'STUDIO',self.root),patch.object(serve,'entry_map',side_effect=lambda:{'demo':self.e})]
@@ -44,7 +44,7 @@ class SecurityTests(unittest.TestCase):
             self.e['media_path']=value
             self.assertEqual(self.request('/media/demo')[0],404,value)
     def test_notes_and_archive_are_confined_too(self):
-        outside=self.root/'outside.md';outside.write_text('outside')
+        outside=self.root/'outside.md';outside.write_text('outside', encoding='utf-8')
         self.e['notes']=[str(outside)];self.e['archive_path']=str(outside)
         self.assertEqual(self.request('/notes/demo/0')[0],404)
         self.assertEqual(self.request('/download/demo')[0],404)

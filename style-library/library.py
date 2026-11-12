@@ -12,7 +12,7 @@ def site_settings():
     defaults = {'studio_name': 'AI Video Studio', 'library_label': 'Reference Library',
                 'monogram': 'ai.', 'credit': {'name': 'Matt Paige', 'url': 'https://substack.com/@mattpaige68'}}
     try:
-        settings = json.loads((BASE / 'settings.json').read_text())
+        settings = json.loads((BASE / 'settings.json').read_text(encoding='utf-8'))
     except (OSError, ValueError):
         return defaults
     if not isinstance(settings, dict):
@@ -37,14 +37,18 @@ def site_settings():
 
 def catalog():
     path = BASE / 'catalog.json'
-    return json.loads(path.read_text()) if path.exists() else {'schema_version': 4, 'entries': [], 'techniques': []}
+    return json.loads(path.read_text(encoding='utf-8')) if path.exists() else {'schema_version': 4, 'entries': [], 'techniques': []}
+
+def catalog_path(*parts):
+    """Studio-relative path with forward slashes, exactly as stored in the JSON registries."""
+    return Path(*parts).as_posix()
 
 def project_reference_candidates(project, data):
     """Exact active video sources only; titles and coincidentally matching IDs are not evidence."""
     artifact = next((a for a in project.get('artifacts', []) if a.get('id') == project.get('primary_artifact')), None)
     if not artifact or artifact.get('type') != 'video' or not artifact.get('version') or not artifact.get('path'):
         return []
-    media = str(Path('projects') / project['id'] / artifact['path'])
+    media = catalog_path('projects', project['id'], artifact['path'])
     removed = data.get('removed_references', {})
     return [entry for entry in data.get('entries', []) if
             isinstance(entry.get('id'), str) and re.fullmatch(r'[a-z0-9][a-z0-9-]*', entry['id']) and
@@ -259,7 +263,7 @@ def validate():
     assert not set(ids).intersection(t['id'] for t in techniques), 'Video/technique id collision'
     by_id = {e['id']:e for e in entries}
     evidence_path = BASE/'runtime/source-evidence.json'
-    source_evidence = {e['id']:e for e in json.loads(evidence_path.read_text())} if evidence_path.exists() else {}
+    source_evidence = {e['id']:e for e in json.loads(evidence_path.read_text(encoding='utf-8'))} if evidence_path.exists() else {}
     technique_examples=0
     used=0
     for t in techniques:

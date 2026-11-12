@@ -13,6 +13,7 @@ from pathlib import Path
 from urllib.parse import urlencode
 import project_index as index
 import review_actions as storage
+from library import catalog_path
 from security import registered_file
 
 VIDEO = {'.mp4', '.mov', '.webm', '.m4v'}
@@ -45,7 +46,7 @@ def complete(entry, snapshot):
 def discover():
     with index.STATE_LOCK:
         storage.check_storage()
-        data = json.loads(storage.CATALOG.read_text()) if storage.CATALOG.exists() else {'entries': [], 'techniques': []}
+        data = json.loads(storage.CATALOG.read_text(encoding='utf-8')) if storage.CATALOG.exists() else {'entries': [], 'techniques': []}
         projects = index.registry()['projects']
         project_map = {p['id']: p for p in projects}
         removed = data.get('removed_references', {})
@@ -61,7 +62,7 @@ def discover():
                 project = project_map.get(entry.get('project_id'), {})
                 artifact = next((a for a in project.get('artifacts', []) if a['id'] == project.get('primary_artifact')), {})
                 if (project.get('state') != 'final' or entry.get('version') != artifact.get('version')
-                        or entry.get('media_path') != str(Path('projects') / project['id'] / artifact.get('path', ''))):
+                        or entry.get('media_path') != catalog_path('projects', project['id'], artifact.get('path', ''))):
                     continue
             if entry.get('project_id'):
                 represented.add(entry['project_id'])
@@ -90,7 +91,7 @@ def discover():
                 continue
             try:
                 path = index.resolve(project, artifact['path'])
-                snapshot = {'source_version': artifact['version'], 'source_path': str(path.relative_to(index.STUDIO)), 'source_sha256': digest(path)}
+                snapshot = {'source_version': artifact['version'], 'source_path': path.relative_to(index.STUDIO).as_posix(), 'source_sha256': digest(path)}
             except (OSError, ValueError, KeyError):
                 continue
             items.append({'id': 'project:' + project['id'] + '@' + artifact['id'], 'project_id': project['id'],
@@ -132,9 +133,9 @@ def prepared(project, artifact, expected=None):
     path = index.resolve(project, 'technique-plan.json')
     if expected is not None:
         expected[path] = digest(path)
-    plans = json.loads(path.read_text())['plans']
+    plans = json.loads(path.read_text(encoding='utf-8'))['plans']
     matches = [p for p in plans if p['artifact_id'] == artifact['id'] and p['source_version'] == artifact['version']
-               and p['source_path'] == str(Path('projects') / project['id'] / artifact['path'])
+               and p['source_path'] == catalog_path('projects', project['id'], artifact['path'])
                and p['source_sha256'] == digest(index.resolve(project, artifact['path']))]
     return matches[-1] if matches else None
 
@@ -150,9 +151,9 @@ def prepare(project_id, artifact_id, entry_path, examples_path):
         artifact = next(a for a in project['artifacts'] if a['id'] == artifact_id)
         if artifact['type'] != 'video' or artifact.get('role') == 'history' or project['primary_artifact'] != artifact_id or index.review_options(project)['kind'] != 'final':
             raise ValueError('Prepare techniques for the current final-review video.')
-        entry, examples = json.loads(Path(entry_path).read_text()), json.loads(Path(examples_path).read_text())
+        entry, examples = json.loads(Path(entry_path).read_text(encoding='utf-8')), json.loads(Path(examples_path).read_text(encoding='utf-8'))
         snapshot = video_snapshot(entry)
-        if entry.get('collection') != 'mine' or snapshot['source_path'] != str(Path('projects') / project_id / artifact['path']) or snapshot['source_version'] != artifact['version']:
+        if entry.get('collection') != 'mine' or snapshot['source_path'] != catalog_path('projects', project_id, artifact['path']) or snapshot['source_version'] != artifact['version']:
             raise ValueError('The technique plan must match this exact project checkpoint.')
         catalog = json.loads(catalog_bytes)
         prior = next((e for e in catalog['entries'] if e['id'] == entry['id']), None)

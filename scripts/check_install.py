@@ -12,7 +12,7 @@ projects, media, libraries and settings are never read or changed.
 import argparse
 import hashlib
 import json
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 import re
 import sys
 import urllib.request
@@ -24,7 +24,7 @@ LIMIT = 2 * 1024 * 1024
 
 
 def installed_version(root):
-    found = re.findall(r'<meta name="studio-version" content="([^"]+)"', (root / 'style-library/dist/index.html').read_text())
+    found = re.findall(r'<meta name="studio-version" content="([^"]+)"', (root / 'style-library/dist/index.html').read_text(encoding='utf-8'))
     if len(found) != 1:
         raise ValueError('Installed interface version not found')
     return found[0]
@@ -57,8 +57,8 @@ def load_manifest(source):
         raise ValueError('Manifest lists no files')
     for item in files:
         path = item.get('path') if isinstance(item, dict) else None
-        if (not isinstance(path, str) or Path(path).is_absolute() or '..' in Path(path).parts or
-                not re.fullmatch(r'[0-9a-f]{64}', str(item.get('sha256')))):
+        if (not isinstance(path, str) or PurePosixPath(path).is_absolute() or PureWindowsPath(path).is_absolute() or
+                '..' in Path(path).parts or not re.fullmatch(r'[0-9a-f]{64}', str(item.get('sha256')))):
             raise ValueError('Unsafe or malformed manifest entry')
     return manifest
 

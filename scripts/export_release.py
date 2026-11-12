@@ -12,7 +12,7 @@ SECRETS=[re.compile(r'(?<![A-Za-z0-9])sk-[A-Za-z0-9_-]{24,}'),re.compile(r'-----
 
 def sources():
     rows=[]
-    for name in (ROOT/'release-files.txt').read_text().splitlines():
+    for name in (ROOT/'release-files.txt').read_text(encoding='utf-8').splitlines():
         if not name or name.startswith('#'):continue
         p=Path(name)
         if (p.is_absolute() or '..' in p.parts or any(part.startswith('.env') for part in p.parts) or p.suffix in {'.pem','.key','.p12','.pfx'} or name.startswith('style-library/dist/assets/reference-previews/') or name in {'style-library/catalog.json','style-library/projects.json','style-library/settings.json','style-library/reference-notes.json','style-library/writing-voice.json','style-library/collections.json'} or
@@ -33,7 +33,7 @@ def sources():
     return rows
 
 def main():
-    version=json.loads((ROOT/'package.json').read_text())['version']
+    version=json.loads((ROOT/'package.json').read_text(encoding='utf-8'))['version']
     parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--name',default='ai-video-studio-'+version);args=parser.parse_args()
     if not re.fullmatch(r'[a-z0-9][a-z0-9.-]*',args.name):raise SystemExit('Use a safe lowercase release name')
     rows=sources();out=ROOT/'releases';out.mkdir(exist_ok=True);archive=out/(args.name+'.zip')
@@ -44,7 +44,7 @@ def main():
     with zipfile.ZipFile(archive,'x',zipfile.ZIP_DEFLATED) as z:
         for name,data in rows:z.writestr(args.name+'/'+name,data)
         z.writestr(args.name+'/RELEASE-MANIFEST.json',json.dumps(manifest,indent=2)+'\n')
-    archive.with_suffix('.manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
+    archive.with_suffix('.manifest.json').write_text(json.dumps(manifest,indent=2)+'\n',encoding='utf-8')
     print(json.dumps({'archive':str(archive),'files':len(rows),'sha256':hashlib.sha256(archive.read_bytes()).hexdigest(),'published':False}))
 
 if __name__=='__main__':main()

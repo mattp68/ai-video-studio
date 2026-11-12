@@ -29,7 +29,7 @@ def main():
     for t in catalog().get('techniques',[]):
         for x in t['examples']:poster(registered_file(STUDIO,entries[x['style_id']]['media_path'],MEDIA),x['poster'],x['poster_at'])
     (BASE/'runtime').mkdir(exist_ok=True)
-    (BASE/'runtime/source-evidence.json').write_text(json.dumps(evidence,indent=2)+'\n')
+    (BASE/'runtime/source-evidence.json').write_text(json.dumps(evidence,indent=2)+'\n',encoding='utf-8')
     print(f'Prepared {len(evidence)} registered video sources. Fonts are already bundled with licenses.')
 
 if __name__=='__main__':main()

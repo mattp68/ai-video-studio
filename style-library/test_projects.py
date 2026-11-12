@@ -24,9 +24,9 @@ class ProjectsTest(unittest.TestCase):
         self.root = Path(self.temp.name)
         self.project = self.root / 'projects' / 'demo'
         self.project.mkdir(parents=True)
-        (self.project / 'STATUS.md').write_text('Review V02; V01 accepted.')
+        (self.project / 'STATUS.md').write_text('Review V02; V01 accepted.', encoding='utf-8')
         (self.project / 'review.mp4').write_bytes(b'0123456789')
-        (self.project / 'unregistered.txt').write_text('Never serve by guessed filename.')
+        (self.project / 'unregistered.txt').write_text('Never serve by guessed filename.', encoding='utf-8')
         self.record = {
             'id': 'demo', 'primary_artifact': 'review', 'state': 'review',
             'source_notes': [{'label': 'Status', 'path': 'STATUS.md',
@@ -52,7 +52,7 @@ class ProjectsTest(unittest.TestCase):
         self.temp.cleanup()
 
     def save(self):
-        self.registry.write_text(json.dumps({'schema_version': 1, 'projects': [self.record]}))
+        self.registry.write_text(json.dumps({'schema_version': 1, 'projects': [self.record]}), encoding='utf-8')
 
     def request(self, path, method='GET', **headers):
         c = http.client.HTTPConnection('127.0.0.1', self.server.server_port)
@@ -64,7 +64,7 @@ class ProjectsTest(unittest.TestCase):
 
     def test_changed_status_flags_snapshot_without_inventing_new_approval(self):
         self.assertFalse(index.public_index()['projects'][0]['stale'])
-        (self.project / 'STATUS.md').write_text('A new experiment needs review.')
+        (self.project / 'STATUS.md').write_text('A new experiment needs review.', encoding='utf-8')
         p = index.public_index()['projects'][0]
         self.assertTrue(p['stale'])
         self.assertEqual(p['state'], 'review')
@@ -85,7 +85,7 @@ class ProjectsTest(unittest.TestCase):
 
     def test_outside_absolute_and_symlink_paths_rejected(self):
         outside = self.root / 'outside.txt'
-        outside.write_text('Outside the requested project.')
+        outside.write_text('Outside the requested project.', encoding='utf-8')
         (self.project / 'escape.txt').symlink_to(outside)
         for value in ['../outside.txt', str(outside), 'escape.txt']:
             self.record['artifacts'][0]['path'] = value
@@ -119,9 +119,9 @@ class ProjectsTest(unittest.TestCase):
         self.registry.unlink()
         self.assertEqual(index.public_index()['projects'], [])
         self.save()
-        data = json.loads(self.registry.read_text())
+        data = json.loads(self.registry.read_text(encoding='utf-8'))
         data['projects'].append(copy.deepcopy(self.record))
-        self.registry.write_text(json.dumps(data))
+        self.registry.write_text(json.dumps(data), encoding='utf-8')
         with self.assertRaisesRegex(ValueError, 'Duplicate project'):
             index.validate()
 

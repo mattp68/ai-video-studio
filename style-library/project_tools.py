@@ -44,7 +44,7 @@ def source(p,a,root):
     if not name:return None
     try:
         path=safe_file(root,name)
-        if path.name!='index.html' or path.stat().st_size>2*1024*1024 or 'data-composition-id' not in path.read_text():return None
+        if path.name!='index.html' or path.stat().st_size>2*1024*1024 or 'data-composition-id' not in path.read_text(encoding='utf-8'):return None
         return path.parent
     except (OSError,UnicodeError,ToolsError):return None
 
@@ -61,7 +61,7 @@ def inventory(folder):
             stat=target.stat();total+=stat.st_size
             if len(rows)>=12000 or total>5*1024**3:raise ToolsError('Ask your editing chat to prepare a smaller editable copy of this version.',413)
             value=index.digest(target) if path.suffix.lower() in CODE else f'{stat.st_size}:{stat.st_mtime_ns}'
-            rows.append((str(path.relative_to(folder)),value))
+            rows.append((path.relative_to(folder).as_posix(),value))
     return hashlib.sha256(json.dumps(sorted(rows)).encode()).hexdigest(),rows
 
 def sound_summary(p,a,root,folder):
@@ -71,7 +71,7 @@ def sound_summary(p,a,root,folder):
     try:
         path=safe_file(root,candidates[0])
         if path.stat().st_size>524288:return {'recorded':False}
-        data=json.loads(path.read_text());music=data.get('music');cues=data.get('cues',data.get('effects'))
+        data=json.loads(path.read_text(encoding='utf-8'));music=data.get('music');cues=data.get('cues',data.get('effects'))
         if music is False or music is None or music=='' or isinstance(music,dict) and music.get('enabled') is False:music_label='No background music' if 'music' in data else 'Not recorded'
         elif isinstance(music,str):music_label=music[:250]
         elif isinstance(music,dict):music_label=' · '.join(str(music[k])[:120] for k in ['title','artist'] if music.get(k)) or 'Music bed recorded'
@@ -91,7 +91,7 @@ def working_copy(p,a,root,revision):
     if not path.exists():return None
     if path.is_symlink():raise ToolsError('The editor-session path needs repair.',503)
     try:
-        data=json.loads(path.read_text());copy=(root/'work/studio-editor'/data['folder'])
+        data=json.loads(path.read_text(encoding='utf-8'));copy=(root/'work/studio-editor'/data['folder'])
         if (data.get('revision')==revision and isinstance(data['folder'],str) and re.fullmatch(re.escape(a['id'])+r'-[0-9a-f]{8}',data['folder']) and copy.resolve()==copy and (copy/'index.html').is_file()):return copy
     except (OSError,ValueError,TypeError,KeyError):pass
     return None
@@ -153,5 +153,5 @@ def open_editor(body):
                 url=preview_url(run.stdout,copy,port)
         except subprocess.TimeoutExpired:raise ToolsError('HyperFrames is taking longer to open. Your working copy is saved; ask your editing chat to open it.',503)
         if not url:raise ToolsError('The editor link was unavailable. Ask your editing chat to open the saved working copy.',503)
-        return {'url':url,'working_copy':str(copy.relative_to(index.STUDIO)),'artifact_id':a['id']}
+        return {'url':url,'working_copy':copy.relative_to(index.STUDIO).as_posix(),'artifact_id':a['id']}
     finally:OPEN_LOCK.release()

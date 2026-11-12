@@ -37,6 +37,8 @@ python3 scripts/smoke.py
 
 Smoke generates a small synthetic source, makes a two-cut assembly/time map/script, checks a rendered animation and prepares a demo checkpoint/actual board frame. It does not approve the demo. Read its report before saying setup passed. The sample does not assess human performance, real spoken joins, caption accuracy or artistic quality. A previous complete smoke run is preserved rather than silently rerun; use a fresh directory for a new full test.
 
+On Windows, enable Developer Mode (Settings → System → For developers) before running the test suite: the symlink-safety tests create symbolic links, which need that privilege or an elevated shell. Without it they fail with privilege errors (WinError 1314); the studio itself does not need Developer Mode. If `python3` is not on PATH, use `py -3` or the Python launcher instead. On Windows, keep the repository's LF line endings (the included .gitattributes handles this); CRLF checkouts break the release consistency checks.
+
 ## 4. Open your home base
 
 ```sh

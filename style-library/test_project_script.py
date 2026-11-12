@@ -19,10 +19,10 @@ class ScriptTests(unittest.TestCase):
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory();self.root=Path(self.tmp.name).resolve();self.base=self.root/'style-library';self.base.mkdir()
         self.project=self.root/'projects/demo';self.project.mkdir(parents=True);(self.project/'exports').mkdir()
-        (self.project/'script.txt').write_text('The script I recorded.\n')
-        (self.project/'exports/assembled-script-v04.txt').write_text('The selected words.')
-        self.registry=self.base/'projects.json';self.catalog=self.base/'catalog.json';self.catalog.write_text('{"entries":[]}')
-        self.registry.write_text(json.dumps({'projects':[{'id':'demo','title':'Demo video','artifacts':[{'id':'spoken-v04','type':'video','version':'V04','approval_kind':'spoken_cut','downloads':[]}]}]}))
+        (self.project/'script.txt').write_text('The script I recorded.\n', encoding='utf-8')
+        (self.project/'exports/assembled-script-v04.txt').write_text('The selected words.', encoding='utf-8')
+        self.registry=self.base/'projects.json';self.catalog=self.base/'catalog.json';self.catalog.write_text('{"entries":[]}', encoding='utf-8')
+        self.registry.write_text(json.dumps({'projects':[{'id':'demo','title':'Demo video','artifacts':[{'id':'spoken-v04','type':'video','version':'V04','approval_kind':'spoken_cut','downloads':[]}]}]}), encoding='utf-8')
         self.patches=[patch.object(index,'STUDIO',self.root),patch.object(index,'REGISTRY',self.registry),patch.object(storage,'BASE',self.base),patch.object(storage,'CATALOG',self.catalog),patch.object(storage,'JOURNALS',self.base/'runtime/review-actions')]
         for p in self.patches:p.start()
     def tearDown(self):
@@ -39,7 +39,7 @@ class ScriptTests(unittest.TestCase):
         before=self.registry.read_bytes();body=self.body();first=scripts.save(body);second=scripts.save(self.body('A refined script.'))
         self.assertNotEqual(first['version_id'],second['version_id']);self.assertEqual(scripts.current('demo',first['version_id'])['text'],body['text'])
         self.assertTrue(scripts.save(body)['duplicate']);self.assertEqual(scripts.current('demo')['version_id'],second['version_id'])
-        self.assertEqual((self.project/'script.txt').read_text(),'The script I recorded.\n');self.assertEqual(self.registry.read_bytes(),before);self.assertFalse((self.project/'approval-state.json').exists())
+        self.assertEqual((self.project/'script.txt').read_text(encoding='utf-8'),'The script I recorded.\n');self.assertEqual(self.registry.read_bytes(),before);self.assertFalse((self.project/'approval-state.json').exists())
     def test_stale_and_reused_requests_cannot_overwrite_a_later_save(self):
         body=self.body();scripts.save(self.body('New saved script.'));before=(self.project/'script-state.json').read_bytes()
         with self.assertRaisesRegex(FeedbackError,'changed elsewhere'):scripts.save(body)
@@ -49,18 +49,18 @@ class ScriptTests(unittest.TestCase):
     def test_unsafe_corrupt_unknown_and_oversized_inputs_preserve_files(self):
         for body in [{**self.body(),'project_id':'../demo'},self.body('x'*50001),{**self.body(),'extra':True}]:
             with self.assertRaises(FeedbackError):scripts.save(body)
-        state=self.project/'script-state.json';state.write_text('{"schema_version":1}')
+        state=self.project/'script-state.json';state.write_text('{"schema_version":1}', encoding='utf-8')
         with self.assertRaises(FeedbackError):scripts.current('demo')
-        self.assertEqual(state.read_text(),'{"schema_version":1}');state.unlink()
-        outside=self.root/'outside.json';outside.write_text('keep');state.symlink_to(outside)
+        self.assertEqual(state.read_text(encoding='utf-8'),'{"schema_version":1}');state.unlink()
+        outside=self.root/'outside.json';outside.write_text('keep', encoding='utf-8');state.symlink_to(outside)
         with self.assertRaises(storage.ReviewError):scripts.current('demo')
-        self.assertEqual(outside.read_text(),'keep')
+        self.assertEqual(outside.read_text(encoding='utf-8'),'keep')
     def test_external_change_at_commit_is_not_overwritten(self):
         body=self.body();real=storage.commit
         def changed(*args):
-            (self.project/'script.txt').write_text('Changed by another chat.');return real(*args)
+            (self.project/'script.txt').write_text('Changed by another chat.', encoding='utf-8');return real(*args)
         with patch.object(storage,'commit',side_effect=changed),self.assertRaisesRegex(storage.ReviewError,'changed while saving'):scripts.save(body)
-        self.assertFalse((self.project/'script-state.json').exists());self.assertEqual((self.project/'script.txt').read_text(),'Changed by another chat.')
+        self.assertFalse((self.project/'script-state.json').exists());self.assertEqual((self.project/'script.txt').read_text(encoding='utf-8'),'Changed by another chat.')
     def test_http_requires_same_origin_explicit_action_and_bounded_json(self):
         class Quiet(Handler):
             def log_message(self,*args):pass

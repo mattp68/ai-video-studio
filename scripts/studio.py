@@ -15,7 +15,7 @@ import sys
 import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
-CONFIG = json.loads((ROOT / "studio.config.json").read_text())
+CONFIG = json.loads((ROOT / "studio.config.json").read_text(encoding="utf-8"))
 
 
 def run(args, capture=False):
@@ -24,7 +24,7 @@ def run(args, capture=False):
 
 
 def write_json(path, data):
-    path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n")
+    path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
 def probe(source):
@@ -93,9 +93,9 @@ def new_project(args):
         (project / folder).mkdir(parents=True, exist_ok=True)
     for name in ["brief.md", "STATUS.md", "STORYBOARD.md", "selects.csv", "sound-cues.csv", "asset-ledger.csv", "edit-plan.json"]:
         shutil.copy2(ROOT / "templates" / name, project / name)
-    (project / "script.txt").write_text("Paste the supplied original script here.\n")
-    (project / "assembled-script.txt").write_text("Pending take selection.\n")
-    (project / "review-notes.md").write_text("# Review notes\n\nNo footage reviewed yet.\n")
+    (project / "script.txt").write_text("Paste the supplied original script here.\n", encoding="utf-8")
+    (project / "assembled-script.txt").write_text("Pending take selection.\n", encoding="utf-8")
+    (project / "review-notes.md").write_text("# Review notes\n\nNo footage reviewed yet.\n", encoding="utf-8")
     write_json(project / "media-manifest.json", {"version": 1, "sources": []})
     descriptor = {"id": args.slug, "title": args.slug.replace("-", " ").title(), "subtitle": "New project", "format": "video", "state": "in_progress", "stage": "intake", "summary": "Bring your footage, script and references to the editing chat.", "next_step": "Establish the spoken cut before storyboarding.", "primary_artifact": "intake", "source_notes": [{"path": "STATUS.md", "label": "Current status"}], "artifacts": [{"id": "intake", "label": "Project notes", "type": "document", "path": "STATUS.md", "version": "V01", "role": "current"}]}
     write_json(project / "studio-entry.json", descriptor)
@@ -116,8 +116,8 @@ def ingest(args):
     target = fresh(project / "raw" / source.name)
     metadata = probe(source)
     shutil.copy2(source, target)
-    manifest = json.loads(manifest_path.read_text())
-    manifest["sources"].append({"file": str(target.relative_to(project)),
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["sources"].append({"file": target.relative_to(project).as_posix(),
                                 "sha256": digest.hexdigest(), "bytes": target.stat().st_size,
                                 "probe": metadata})
     write_json(manifest_path, manifest)
@@ -143,7 +143,7 @@ def prepare(args):
     hdr = video.get("color_transfer") in ["smpte2084", "arib-std-b67"]
     if hdr:
         (folder / "HDR-REVIEW-REQUIRED.txt").write_text(
-            "HDR detected. Proxy is for timing only; its color is not approved. Plan SDR conversion before export.\n")
+            "HDR detected. Proxy is for timing only; its color is not approved. Plan SDR conversion before export.\n", encoding="utf-8")
     edge = CONFIG["review"]["proxy_long_edge"]
     scale = f"scale='if(gte(iw,ih),min(iw,{edge}),-2)':'if(gte(iw,ih),-2,min(ih,{edge}))'"
     run(["ffmpeg", "-nostdin", "-v", "error", "-n", "-i", source,
@@ -155,7 +155,7 @@ def prepare(args):
              "-map", "0:a:0", "-vn", "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", folder / "audio.wav"])
         detection = run(["ffmpeg", "-nostdin", "-hide_banner", "-i", source, "-vn",
                          "-af", "silencedetect=noise=-35dB:d=0.35", "-f", "null", "-"], capture=True)
-        (folder / "silence-candidates.log").write_text(detection.stderr)
+        (folder / "silence-candidates.log").write_text(detection.stderr, encoding="utf-8")
     from PIL import Image, ImageDraw, ImageFont
     font = ImageFont.load_default(size=16)
     # Independent seeks keep the label tied to the requested original source time.
@@ -206,7 +206,7 @@ def transcribe(args):
     result = mlx_whisper.transcribe(str(source), path_or_hf_repo=args.model,
                                    language=args.language, word_timestamps=True, verbose=False)
     write_json(output, result)
-    output.with_suffix(".txt").write_text(result["text"].strip() + "\n")
+    output.with_suffix(".txt").write_text(result["text"].strip() + "\n", encoding="utf-8")
     words = [{"text": w["word"].strip(), "start": w["start"], "end": w["end"],
               "probability": w.get("probability")} for s in result["segments"] for w in s.get("words", [])]
     write_json(output.with_suffix(".words.json"), words)
@@ -215,7 +215,7 @@ def transcribe(args):
 
 def assemble(args):
     project = args.project.resolve()
-    plan = json.loads((project / "edit-plan.json").read_text())
+    plan = json.loads((project / "edit-plan.json").read_text(encoding="utf-8"))
     cuts = plan["cuts"]
     if not cuts:
         raise ValueError("No chosen cuts in edit-plan.json")
@@ -269,12 +269,12 @@ def assemble(args):
                              "note": "CFR duration rounded to output frame grid; re-transcribe edited audio for captions."})
             position += length
         concat = folder / "concat.txt"
-        concat.write_text("".join(f"file '{index:04}.mov'\n" for index in range(len(validated))))
+        concat.write_text("".join(f"file '{index:04}.mov'\n" for index in range(len(validated))), encoding="utf-8")
         run(["ffmpeg", "-nostdin", "-v", "error", "-n", "-f", "concat", "-safe", "1",
              "-i", concat, "-c:v", "copy", "-c:a", "aac", "-b:a", "256k",
              "-movflags", "+faststart", output])
     write_json(map_path, {"output": str(output), "duration": position, "cuts": timeline})
-    script_path.write_text("\n\n".join(cut.get("text", "") for cut in cuts) + "\n")
+    script_path.write_text("\n\n".join(cut.get("text", "") for cut in cuts) + "\n", encoding="utf-8")
     print(output)
 
 

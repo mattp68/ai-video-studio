@@ -14,7 +14,12 @@ PY = ROOT / '.venv' / ('Scripts/python.exe' if os.name == 'nt' else 'bin/python'
 ENV = {**os.environ, 'HYPERFRAMES_NO_UPDATE_CHECK': '1', 'HYPERFRAMES_NO_TELEMETRY': '1', 'HYPERFRAMES_SKIP_SKILLS': '1'}
 
 def run(args):
-    subprocess.run([str(a) for a in args], cwd=ROOT, env=ENV, check=True)
+    cmd = [str(a) for a in args]
+    if os.name == 'nt':
+        # npm and local .bin shims are .cmd files that CreateProcess cannot resolve without a shell.
+        resolved = shutil.which(cmd[0])
+        if resolved: cmd[0] = resolved
+    subprocess.run(cmd, cwd=ROOT, env=ENV, check=True)
 
 def local_package_present(name):
     if not PY.is_file(): return False

@@ -43,15 +43,15 @@ class ReferenceTests(unittest.TestCase):
 
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory();self.root=Path(self.tmp.name).resolve();self.base=self.root/'style-library';self.base.mkdir()
-        self.catalog=self.base/'catalog.json';self.catalog.write_text(json.dumps({'schema_version':4,'entries':[],'techniques':[]}))
-        self.index=self.base/'projects.json';self.index.write_text('{"projects":[]}')
+        self.catalog=self.base/'catalog.json';self.catalog.write_text(json.dumps({'schema_version':4,'entries':[],'techniques':[]}), encoding='utf-8')
+        self.index=self.base/'projects.json';self.index.write_text('{"projects":[]}', encoding='utf-8')
         self.patches=[patch.object(index,'STUDIO',self.root),patch.object(index,'REGISTRY',self.index),patch.object(storage,'BASE',self.base),patch.object(storage,'CATALOG',self.catalog),patch.object(storage,'JOURNALS',self.base/'runtime/review-actions'),patch.object(intake,'CATALOG',self.catalog)]
         for p in self.patches:p.start()
         self.body={'action':'create','url':'https://www.instagram.com/reel/demo123/?utm_source=share','title':'An opening I like','creator':'Demo Creator','note':'The five cards arrive around the speaker.'}
     def tearDown(self):
         for p in self.patches:p.stop()
         self.tmp.cleanup()
-    def data(self):return json.loads(self.catalog.read_text())
+    def data(self):return json.loads(self.catalog.read_text(encoding='utf-8'))
     def test_create_is_unanalyzed_and_does_not_fetch(self):
         result=intake.save(self.body);e=self.data()['entries'][0]
         self.assertTrue(result['saved']);self.assertEqual(e['id'],result['id']);self.assertEqual(e['analysis_status'],'not_analyzed')
@@ -64,7 +64,7 @@ class ReferenceTests(unittest.TestCase):
         self.assertEqual(first['id'],result['id']);self.assertTrue(result['duplicate']);self.assertEqual(self.catalog.read_bytes(),before)
         for a,b in [('https://youtu.be/abc','https://www.youtube.com/shorts/abc'),('https://www.tiktok.com/@someone/video/12345?_t=x','https://www.tiktok.com/@someone/video/12345?_r=y')]:self.assertEqual(intake.key(intake.source_url(a)),intake.key(intake.source_url(b)))
     def test_edit_keeps_analysis_source_and_techniques(self):
-        result=intake.save(self.body);data=self.data();e=data['entries'][0];e.update(traits={'Motion':'Verified card reveal'},analysis_status='analyzed',moments=[{'time':1,'label':'Reveal'}],keep=['A steady hold'],media_path='references/demo/sample.mp4');data['techniques']=[{'id':'tech-unchanged','examples':[]}];self.catalog.write_text(json.dumps(data))
+        result=intake.save(self.body);data=self.data();e=data['entries'][0];e.update(traits={'Motion':'Verified card reveal'},analysis_status='analyzed',moments=[{'time':1,'label':'Reveal'}],keep=['A steady hold'],media_path='references/demo/sample.mp4');data['techniques']=[{'id':'tech-unchanged','examples':[]}];self.catalog.write_text(json.dumps(data), encoding='utf-8')
         state=intake.current(result['id']);intake.save({'action':'edit','id':result['id'],'revision':state['revision'],'title':'A clearer title','creator':'Demo Creator','note':'Focus on the first card.'})
         edited=self.data()['entries'][0]
         for field in ['source_url','traits','analysis_status','moments','keep','media_path']:self.assertEqual(edited[field],e[field])
@@ -74,7 +74,7 @@ class ReferenceTests(unittest.TestCase):
         intake.save(update)
         with self.assertRaises(intake.IntakeError) as e:intake.save(update)
         self.assertEqual(e.exception.status,409)
-        data=self.data();data['entries'][0]['collection']='mine';self.catalog.write_text(json.dumps(data))
+        data=self.data();data['entries'][0]['collection']='mine';self.catalog.write_text(json.dumps(data), encoding='utf-8')
         with self.assertRaises(intake.IntakeError):intake.current(result['id'])
     def test_creator_names_are_canonical_and_blank_is_honest(self):
         intake.save(self.body);intake.save({**self.body,'url':'https://example.com/second','creator':'demo creator'})
@@ -90,15 +90,15 @@ class ReferenceTests(unittest.TestCase):
     def test_external_catalog_change_is_preserved(self):
         commit=storage.commit
         external={'entries':[],'techniques':[],'owner_change':'Keep this'}
-        def changed(*args,**kwargs):self.catalog.write_text(json.dumps(external));return commit(*args,**kwargs)
+        def changed(*args,**kwargs):self.catalog.write_text(json.dumps(external), encoding='utf-8');return commit(*args,**kwargs)
         with patch.object(storage,'commit',side_effect=changed),self.assertRaises(intake.IntakeError):intake.save(self.body)
         self.assertEqual(self.data(),external)
     def test_corrupt_or_symlinked_catalog_is_not_overwritten(self):
-        self.catalog.write_text('{bad')
+        self.catalog.write_text('{bad', encoding='utf-8')
         with self.assertRaises(intake.IntakeError):intake.save(self.body)
-        self.catalog.unlink();outside=self.root/'outside.json';outside.write_text('{"entries":[]}');self.catalog.symlink_to(outside)
+        self.catalog.unlink();outside=self.root/'outside.json';outside.write_text('{"entries":[]}', encoding='utf-8');self.catalog.symlink_to(outside)
         with self.assertRaises(storage.ReviewError):intake.save(self.body)
-        self.assertEqual(outside.read_text(),'{"entries":[]}')
+        self.assertEqual(outside.read_text(encoding='utf-8'),'{"entries":[]}')
     def test_threaded_creates_preserve_both_references(self):
         errors=[]
         def save(url):
@@ -129,7 +129,7 @@ class ReferenceTests(unittest.TestCase):
         first=intake.save(self.body)['id'];second=intake.save({**self.body,'url':'https://example.com/own'})['id']
         data=self.data();next(e for e in data['entries'] if e['id']==second)['collection']='mine'
         data['techniques']=[{'id':'tech-demo','examples':[{'id':'exact-example','style_id':first}]}]
-        self.catalog.write_text(json.dumps(data));before=copy.deepcopy(data)
+        self.catalog.write_text(json.dumps(data), encoding='utf-8');before=copy.deepcopy(data)
         for id in [first,second]:
             state=intake.visibility_state(id)
             removed=intake.set_visibility({'id':id,'action':'remove','revision':state['revision']})
@@ -140,7 +140,7 @@ class ReferenceTests(unittest.TestCase):
             self.assertFalse(repeat['changed']);self.assertEqual(count,len(list(storage.JOURNALS.glob('*/transaction.json'))))
             restored=intake.set_visibility({'id':id,'action':'restore','revision':removed['revision']})
             self.assertFalse(restored['removed']);self.assertNotIn(id,self.data()['removed_references'])
-        self.assertEqual(self.data()['entries'],before['entries']);self.assertEqual(self.index.read_text(),'{"projects":[]}')
+        self.assertEqual(self.data()['entries'],before['entries']);self.assertEqual(self.index.read_text(encoding='utf-8'),'{"projects":[]}')
 
     def test_example_visibility_keeps_family_siblings_and_exact_links(self):
         reference = intake.save({'action':'create','url':'https://example.com/link-only'})['id']
@@ -148,7 +148,7 @@ class ReferenceTests(unittest.TestCase):
         data = self.data()
         data['techniques'] = [{'id':'tech-demo','examples':[
             {'id':'first','style_id':reference}, {'id':'second','style_id':reference}]}]
-        self.catalog.write_text(json.dumps(data))
+        self.catalog.write_text(json.dumps(data), encoding='utf-8')
         state = intake.visibility_state('tech-demo','first')
         body = {'id':'tech-demo','example_id':'first','action':'remove','revision':state['revision']}
         removed = intake.set_visibility(body)
@@ -172,7 +172,7 @@ class ReferenceTests(unittest.TestCase):
             with self.subTest(delta=delta),self.assertRaises(intake.IntakeError):intake.set_visibility({**body,**delta})
         self.assertEqual(before,self.catalog.read_bytes())
         # A later source update cannot be overwritten by an old Restore action.
-        data=self.data();data['entries'][0]['summary']='New analysis';self.catalog.write_text(json.dumps(data))
+        data=self.data();data['entries'][0]['summary']='New analysis';self.catalog.write_text(json.dumps(data), encoding='utf-8')
         with self.assertRaises(intake.IntakeError):intake.set_visibility({'id':id,'action':'restore','revision':removed['revision']})
         self.assertEqual(self.data()['entries'][0]['summary'],'New analysis')
 
@@ -196,20 +196,20 @@ class ReferenceTests(unittest.TestCase):
         for thread in threads:thread.join()
         self.assertFalse(errors);self.assertEqual(set(self.data()['removed_references']),set(ids))
         commit=storage.commit;external=self.data();external['owner_change']='Keep this'
-        def changed(*args,**kwargs):self.catalog.write_text(json.dumps(external));return commit(*args,**kwargs)
+        def changed(*args,**kwargs):self.catalog.write_text(json.dumps(external), encoding='utf-8');return commit(*args,**kwargs)
         with patch.object(storage,'commit',side_effect=changed),self.assertRaises(intake.IntakeError):
             intake.set_visibility({'id':ids[0],'action':'restore','revision':intake.visibility_state(ids[0])['revision']})
         self.assertEqual(self.data(),external)
 
     def test_visibility_corrupt_symlink_and_recovery_storage_are_preserved(self):
         id=intake.save(self.body)['id'];state=intake.visibility_state(id);body={'id':id,'action':'remove','revision':state['revision']}
-        data=self.data();data['removed_references']=[];self.catalog.write_text(json.dumps(data));before=self.catalog.read_bytes()
+        data=self.data();data['removed_references']=[];self.catalog.write_text(json.dumps(data), encoding='utf-8');before=self.catalog.read_bytes()
         with self.assertRaises(intake.IntakeError):intake.set_visibility(body)
         self.assertEqual(before,self.catalog.read_bytes())
         self.catalog.unlink();outside=self.root/'outside.json';outside.write_bytes(before);self.catalog.symlink_to(outside)
         with self.assertRaises(storage.ReviewError):intake.set_visibility(body)
-        self.assertEqual(before,outside.read_bytes());self.catalog.unlink();data.pop('removed_references');self.catalog.write_text(json.dumps(data))
-        journal=storage.JOURNALS/'unfinished';journal.mkdir();(journal/'transaction.json').write_text('{"state":"prepared"}')
+        self.assertEqual(before,outside.read_bytes());self.catalog.unlink();data.pop('removed_references');self.catalog.write_text(json.dumps(data), encoding='utf-8')
+        journal=storage.JOURNALS/'unfinished';journal.mkdir();(journal/'transaction.json').write_text('{"state":"prepared"}', encoding='utf-8')
         before=self.catalog.read_bytes()
         with self.assertRaises(intake.IntakeError):intake.set_visibility(body)
         self.assertEqual(before,self.catalog.read_bytes())

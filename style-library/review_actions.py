@@ -13,7 +13,7 @@ import math
 import shutil
 import subprocess
 import project_index as index
-from library import BASE, project_reference_candidates
+from library import BASE, catalog_path, project_reference_candidates
 
 CATALOG = BASE / 'catalog.json'
 JOURNALS = BASE / 'runtime' / 'review-actions'
@@ -81,7 +81,7 @@ def commit(changes, body, expected=None):
         backup = f'before-{i}.data'
         if before is not None:
             (folder / backup).write_bytes(before)
-        records.append({'path': str(target.resolve().relative_to(index.STUDIO.resolve())), 'backup': backup,
+        records.append({'path': target.resolve().relative_to(index.STUDIO.resolve()).as_posix(), 'backup': backup,
                         'existed': before is not None,
                         'before_sha256': hashlib.sha256(before).hexdigest() if before is not None else None,
                         'after_sha256': hashlib.sha256(after).hexdigest()})
@@ -119,7 +119,7 @@ def recover(request_id):
     with index.STATE_LOCK:
         check_storage()
         folder = JOURNALS / request_id
-        manifest = json.loads((folder / 'transaction.json').read_text())
+        manifest = json.loads((folder / 'transaction.json').read_text(encoding='utf-8'))
         if manifest['state'] != 'prepared':
             raise ValueError('Only an unfinished transaction needs recovery')
         for record in manifest['files']:
@@ -156,7 +156,7 @@ def promote_video(data, entry, project, artifact, event, changes, expected):
     """Promote a registered review, keeping prior media/analysis and exact technique sources."""
     old_path = entry.get('media_path')
     prior = next((a for a in project['artifacts'] if a.get('version') == entry.get('version') and
-                  a.get('type') == 'video' and str(Path('projects') / project['id'] / a['path']) == old_path), None)
+                  a.get('type') == 'video' and catalog_path('projects', project['id'], a['path']) == old_path), None)
     if entry.get('collection') != 'mine' or entry.get('project_id', project['id']) != project['id'] or prior is None:
         raise ReviewError('The saved library source does not match this project’s version history. Ask your assistant to check it.')
     old_file = index.resolve(project, prior['path'])
@@ -205,14 +205,14 @@ def promote_video(data, entry, project, artifact, event, changes, expected):
         duration = None
     from project_tools import source as editor_source
     composition = editor_source(project, artifact, index.STUDIO / 'projects' / project['id'])
-    entry.update(version=artifact['version'], media_path=str(path.relative_to(index.STUDIO)), poster=relative,
+    entry.update(version=artifact['version'], media_path=path.relative_to(index.STUDIO).as_posix(), poster=relative,
                  duration=duration, moments=[], source_url=None, source_sha256=next(f['sha256'] for f in event['files'] if f['path'] == artifact['path']),
                  summary=artifact.get('description') or project.get('summary', ''), subtitle=f"{project.get('subtitle', project['title'])} · Final {artifact['version']}",
-                 state=f"Final {artifact['version']}", notes=[str(Path('projects') / project['id'] / n['path']) for n in project['source_notes']],
+                 state=f"Final {artifact['version']}", notes=[catalog_path('projects', project['id'], n['path']) for n in project['source_notes']],
                  evidence=f"Explicit studio approval of {artifact['version']}. Earlier style analysis is preserved in {archive_id}; timed moments have not been inferred for the new version.")
     for field in ['poster_at', 'approval', 'composition']:
         entry.pop(field, None)
-    if composition: entry['composition'] = str((composition / 'index.html').relative_to(index.STUDIO))
+    if composition: entry['composition'] = (composition / 'index.html').relative_to(index.STUDIO).as_posix()
 
 
 def final_reference(project, artifact, event, changes, expected):
@@ -289,7 +289,7 @@ def final_reference(project, artifact, event, changes, expected):
     if entry['collection'] != 'mine' or entry['version'] != artifact.get('version'):
         raise ReviewError('The library points to another version. Ask your assistant to reconcile it before approval.')
     if artifact['type'] == 'video':
-        media_path = str(Path('projects') / project['id'] / artifact['path'])
+        media_path = catalog_path('projects', project['id'], artifact['path'])
         if entry.get('media_path') != media_path:
             raise ReviewError('The library video differs from this checkpoint. Ask your assistant to reconcile it.')
         actual_hash = next(f['sha256'] for f in event['files'] if f['path'] == artifact['path'])
@@ -302,7 +302,7 @@ def final_reference(project, artifact, event, changes, expected):
                     example.get('source_sha256') != actual_hash):
                     raise ReviewError('This video’s technique examples need rechecking before final approval. Ask your assistant to reconcile them.')
     elif artifact['type'] == 'carousel':
-        slide_paths = [str(Path('projects') / project['id'] / f['path']) for f in artifact['frames']]
+        slide_paths = [catalog_path('projects', project['id'], f['path']) for f in artifact['frames']]
         if [f['path'] for f in entry.get('slides', [])] != slide_paths:
             raise ReviewError('The library slide set differs from this checkpoint.')
     elif entry.get('project_id') != project['id']:
@@ -330,12 +330,12 @@ def apply_decision(body):
         check_storage()
         existing = JOURNALS / body['request_id'] / 'transaction.json'
         if existing.exists():
-            saved = json.loads(existing.read_text())
+            saved = json.loads(existing.read_text(encoding='utf-8'))
             if saved['request'] == body and saved['state'] == 'committed':
                 return {'projects': index.public_index()['projects'], 'library_changed': True, 'duplicate': True}
             raise ReviewError('This review request has already been used. Refresh before trying again.')
         for path in JOURNALS.glob('*/transaction.json'):
-            if json.loads(path.read_text())['state'] == 'prepared':
+            if json.loads(path.read_text(encoding='utf-8'))['state'] == 'prepared':
                 raise ReviewError('An earlier approval needs recovery. Ask your assistant to check the saved transaction.', 503)
         registry_bytes = index.REGISTRY.read_bytes()
         data = json.loads(registry_bytes)
@@ -362,7 +362,7 @@ def apply_decision(body):
         expected[state_file] = index.digest(state_file) if state_file.exists() else None
         status = write_target(project, 'STATUS.md')
         expected.setdefault(status, index.digest(status) if status.exists() else None)
-        decisions = json.loads(state_file.read_text()) if state_file.exists() else {'schema_version': 1, 'events': []}
+        decisions = json.loads(state_file.read_text(encoding='utf-8')) if state_file.exists() else {'schema_version': 1, 'events': []}
         decisions['events'].append(event)
         decisions['current'] = event
         changes[state_file] = json_bytes(decisions)
@@ -392,7 +392,7 @@ def apply_decision(body):
         project['review_decision'] = {k: v for k, v in event.items() if k != 'files'}
         project['summary'] = message
         project['synced_on'] = at[:10]
-        old_status = status.read_text() if status.exists() else '# ' + project['title'] + '\n'
+        old_status = status.read_text(encoding='utf-8') if status.exists() else '# ' + project['title'] + '\n'
         old_status = re.sub(re.escape(START) + r'.*?' + re.escape(END) + r'\n*', '', old_status, flags=re.S)
         block = f'{START}\n## Current studio review decision\n\n**{title}: {checkpoint}** — {at}.\n\n{message} {project["next_step"]}\n\nDecision: {event["request_id"]}. Exact file hashes and prior decisions: `approval-state.json`. This records review approval, not publication. This section supersedes older review-state wording for this checkpoint; production notes below are retained.\n{END}\n\n'
         changes[status] = (block + old_status).encode()
@@ -400,7 +400,7 @@ def apply_decision(body):
         if notes is None:
             raise ReviewError('Register this project’s review-notes file before saving an approval.')
         review_notes = write_target(project, notes['path'])
-        old_notes = review_notes.read_text() if review_notes.exists() else '# Review notes\n'
+        old_notes = review_notes.read_text(encoding='utf-8') if review_notes.exists() else '# Review notes\n'
         changes[review_notes] = (old_notes.rstrip() + f'\n\n## Studio decision — {at}\n\n{title}: **{checkpoint}**. {message}\n\nUser action in the local studio. Event `{event["request_id"]}`; exact files/hashes in approval-state.json. {project["next_step"]} No publishing action.\n').encode()
         active = write_target(project, 'active-edit.json')
         if active.exists():

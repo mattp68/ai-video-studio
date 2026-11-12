@@ -65,7 +65,7 @@ def write(path, data, value, revision, request_id, expected=None):
         raise FeedbackError('This writing context changed elsewhere. Reload it; your draft is kept.')
     storage.check_storage()
     for journal in storage.JOURNALS.glob('*/transaction.json'):
-        if json.loads(journal.read_text()).get('state') == 'prepared':
+        if json.loads(journal.read_text(encoding='utf-8')).get('state') == 'prepared':
             raise FeedbackError('An earlier save needs recovery before continuing.', 503)
     if len(data['versions']) >= 400:
         raise FeedbackError('Writing history is full. Ask your editing chat to archive it safely.', 503)
@@ -497,7 +497,7 @@ def feedback_save(body):
         data['requests'].append(row)
         storage.check_storage()
         for journal in storage.JOURNALS.glob('*/transaction.json'):
-            if json.loads(journal.read_text()).get('state') == 'prepared':
+            if json.loads(journal.read_text(encoding='utf-8')).get('state') == 'prepared':
                 raise FeedbackError('An earlier save needs recovery first.', 503)
         storage.commit({path: storage.json_bytes(data)}, {'request_id': body['request_id'], 'operation': 'copy-script-feedback'}, expected)
         return feedback_current(body['project_id'], body['request_id'])

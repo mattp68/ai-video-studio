@@ -44,15 +44,15 @@ class ReleaseTests(unittest.TestCase):
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory();self.root=Path(self.tmp.name)
         self.patch=patch.object(export,'ROOT',self.root);self.patch.start()
-        (self.root/'README.md').write_text('A clean project.')
+        (self.root/'README.md').write_text('A clean project.', encoding='utf-8')
     def tearDown(self):self.patch.stop();self.tmp.cleanup()
-    def select(self,text):(self.root/'release-files.txt').write_text(text)
+    def select(self,text):(self.root/'release-files.txt').write_text(text, encoding='utf-8')
     def test_exact_allowlist_omits_unlisted_owner_data(self):
         (self.root/'private.mp4').write_bytes(b'private fixture')
         self.select('README.md\n')
         self.assertEqual([n for n,_ in export.sources()],['README.md'])
     def test_private_registry_media_and_credentials_are_rejected(self):
-        legacy=self.root/'style-library/references/demo/intake.md';legacy.parent.mkdir(parents=True);legacy.write_text('Private reference notes')
+        legacy=self.root/'style-library/references/demo/intake.md';legacy.parent.mkdir(parents=True);legacy.write_text('Private reference notes', encoding='utf-8')
         for name in ['style-library/dist/assets/reference-previews/cover.svg','style-library/reference-notes.json','style-library/writing-voice.json','style-library/collections.json','style-library/catalog.json','projects/demo/STATUS.md','references/demo/source.mp4','style-library/references/demo/intake.md','.env','secret.key','../outside.md']:
             self.select(name+'\n')
             with self.subTest(name=name),self.assertRaises(ValueError):export.sources()
@@ -62,7 +62,7 @@ class ReleaseTests(unittest.TestCase):
             self.select(value)
             with self.assertRaises(ValueError):export.sources()
     def test_secret_candidate_stops_export(self):
-        (self.root/'README.md').write_text('sk-'+'x'*30)
+        (self.root/'README.md').write_text('sk-'+'x'*30, encoding='utf-8')
         self.select('README.md\n')
         with self.assertRaisesRegex(ValueError,'Credential candidate'):export.sources()
     def test_export_contains_the_interface_dependencies(self):

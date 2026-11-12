@@ -104,7 +104,7 @@ def save(body):
         entry=next((e for e in catalog['entries'] if e.get('id')==body['id']),None)
         if not entry or intake.revision(entry)!=revision:raise PreviewError('This reference changed. Refresh before getting its preview.',409)
         for journal in storage.JOURNALS.glob('*/transaction.json'):
-            if json.loads(journal.read_text()).get('state')=='prepared':raise PreviewError('An earlier save needs recovery first.',503)
+            if json.loads(journal.read_text(encoding='utf-8')).get('state')=='prepared':raise PreviewError('An earlier save needs recovery first.',503)
         base=storage.BASE.resolve();folder=base/'dist/assets/reference-previews'
         if any((base/p).resolve()!=base/p for p in ['dist','dist/assets','dist/assets/reference-previews']):raise PreviewError('The preview folder needs repair.',503)
         folder.mkdir(exist_ok=True)

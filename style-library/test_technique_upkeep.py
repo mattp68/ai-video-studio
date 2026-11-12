@@ -56,14 +56,14 @@ class TechniqueUpkeepTests(unittest.TestCase):
         self.tmp.cleanup()
 
     def save(self):
-        self.catalog.write_text(json.dumps(self.data));self.registry.write_text(json.dumps({'schema_version':1,'projects':[self.p]}))
+        self.catalog.write_text(json.dumps(self.data), encoding='utf-8');self.registry.write_text(json.dumps({'schema_version':1,'projects':[self.p]}), encoding='utf-8')
 
     def poster(self,source,relative,time):
         target=self.base/'dist'/relative;target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes(b'fixture poster')
 
     def prepare(self):
         entry=self.entry|{'version':'V02','media_path':'projects/demo/review.mp4'}
-        e=self.root/'entry.json';e.write_text(json.dumps(entry));p=self.root/'examples.json';p.write_text(json.dumps([{'family':self.family,'example':self.example}]))
+        e=self.root/'entry.json';e.write_text(json.dumps(entry), encoding='utf-8');p=self.root/'examples.json';p.write_text(json.dumps([{'family':self.family,'example':self.example}]), encoding='utf-8')
         return upkeep.prepare('demo','v2',e,p)
 
     def approve(self):
@@ -107,7 +107,7 @@ class TechniqueUpkeepTests(unittest.TestCase):
         self.data['techniques']=[self.family|{'examples':[old],'default_example':'old-example'}];self.save()
         before=self.catalog.read_bytes();result=self.prepare();self.assertFalse(result['published'])
         self.assertEqual(before,self.catalog.read_bytes());self.assertTrue(index.review_options(self.p)['techniques']['prepared'])
-        self.approve();data=json.loads(self.catalog.read_text());current=next(e for e in data['entries'] if e['id']=='demo-video')
+        self.approve();data=json.loads(self.catalog.read_text(encoding='utf-8'));current=next(e for e in data['entries'] if e['id']=='demo-video')
         self.assertEqual(current['version'],'V02');self.assertEqual(current['technique_review_sha256'],upkeep.digest(self.project/'review.mp4'))
         self.assertEqual(current['reference_note'],'Keep my note')
         examples=data['techniques'][0]['examples'];self.assertEqual(len(examples),2)
@@ -117,9 +117,9 @@ class TechniqueUpkeepTests(unittest.TestCase):
 
     def test_prepared_plan_changes_require_a_fresh_approval_review(self):
         self.prepare();before=index.revision(self.p)
-        path=self.project/'technique-plan.json';data=json.loads(path.read_text())
+        path=self.project/'technique-plan.json';data=json.loads(path.read_text(encoding='utf-8'))
         data['plans'][-1]['examples'][0]['example']['label']='Updated direction'
-        path.write_text(json.dumps(data))
+        path.write_text(json.dumps(data), encoding='utf-8')
         self.assertNotEqual(before,index.revision(self.p))
         with self.assertRaisesRegex(reviews.ReviewError,'changed'):
             reviews.apply_decision({'project_id':'demo','artifact_id':'v2','action':'approve',
@@ -129,7 +129,7 @@ class TechniqueUpkeepTests(unittest.TestCase):
     def test_changed_export_does_not_publish_stale_preparation(self):
         self.prepare();(self.project/'review.mp4').write_bytes(b'later export bytes')
         self.assertFalse(index.review_options(self.p)['techniques']['prepared'])
-        self.approve();data=json.loads(self.catalog.read_text())
+        self.approve();data=json.loads(self.catalog.read_text(encoding='utf-8'))
         self.assertFalse(data['techniques']);self.assertEqual(len(upkeep.discover()['items']),1)
 
     def test_completed_zero_technique_source_is_not_repeated(self):
