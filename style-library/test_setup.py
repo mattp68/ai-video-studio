@@ -103,6 +103,25 @@ class SetupTests(unittest.TestCase):
             with patch.object(setup,'ROOT',root),patch.object(sys,'argv',['setup','--studio-only']),patch.object(setup,'capability_report',return_value={}),patch.object(setup,'run',side_effect=AssertionError('Studio-only must not install media')),contextlib.redirect_stdout(io.StringIO()):
                 setup.main()
             self.assertEqual(before,{str(p.relative_to(root)):p.read_bytes() for p in root.rglob('*') if p.is_file()})
+    def test_media_setup_starts_the_renderer_with_node_not_a_shell_shim(self):
+        # Windows runs .bin shims through cmd.exe, which misreads node_modules/.bin/hyperframes.
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder);base=root/'style-library';base.mkdir()
+            for name in ['catalog','projects','settings']:(base/f'{name}.example.json').write_text('{}', encoding='utf-8')
+            gsap=root/'node_modules/gsap/dist/gsap.min.js';gsap.parent.mkdir(parents=True);gsap.write_text('gsap', encoding='utf-8')
+            py=root/'.venv/bin/python';py.parent.mkdir(parents=True);py.write_text('', encoding='utf-8')
+            calls=[]
+            with patch.object(setup,'ROOT',root),patch.object(setup,'PY',py),patch.object(sys,'argv',['setup']),patch.object(setup.shutil,'which',return_value='/tool'),patch.object(setup,'node_supported',return_value=True),patch.object(setup,'guard_renderer_update'),patch.object(setup,'run',side_effect=calls.append),patch.object(setup,'capability_report',return_value={}),contextlib.redirect_stdout(io.StringIO()):
+                setup.main()
+            self.assertIn(['node',root/'node_modules/hyperframes/bin/hyperframes.mjs','browser','ensure'],calls)
+            self.assertEqual([c for c in calls if 'node_modules' in str(c[0])],[])
+            self.assertTrue((root/'examples/studio-check/assets/gsap.min.js').is_file())
+    def test_windows_runs_each_command_by_its_resolved_absolute_path(self):
+        node=r'C:\Program Files\nodejs\node.EXE'
+        with patch.object(setup.os,'name','nt'),patch.object(setup.shutil,'which',return_value=node) as which,patch.object(setup.subprocess,'run') as run:
+            setup.run(['node','cli.mjs','browser','ensure'])
+        which.assert_called_once_with('node')
+        self.assertEqual(run.call_args.args[0],[node,'cli.mjs','browser','ensure'])
     def test_setup_creates_only_missing_registries(self):
         with tempfile.TemporaryDirectory() as folder:
             root=Path(folder);base=root/'style-library';base.mkdir()
