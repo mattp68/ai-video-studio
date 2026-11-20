@@ -103,7 +103,9 @@ def main():
         if args.transcription:
             run([PY,'-m','pip','install','--require-hashes','-r','requirements-transcription-macos.lock.txt'])
         run(['npm','ci','--ignore-scripts'])
-        run(['node_modules/.bin/hyperframes','browser','ensure'])
+        # Start the pinned CLI with node, as hf.py does. On Windows the .bin shim is a .cmd file that
+        # cmd.exe misreads when it is given as a relative path with forward slashes.
+        run(['node', ROOT/'node_modules/hyperframes/bin/hyperframes.mjs', 'browser', 'ensure'])
         assets = ROOT/'examples/studio-check/assets'; assets.mkdir(parents=True, exist_ok=True)
         shutil.copy2(ROOT/'node_modules/gsap/dist/gsap.min.js', assets/'gsap.min.js')
     for name in ['catalog','projects','settings']:

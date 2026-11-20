@@ -128,7 +128,7 @@ def cataloged_examples(source_path):
     if _CATALOG_COUNTS[0] != stamp:
         counts = {}
         try:
-            for family in json.loads(path.read_text()).get('techniques', []):
+            for family in json.loads(path.read_text(encoding='utf-8')).get('techniques', []):
                 for example in family.get('examples', []):
                     counts[example.get('source_path')] = counts.get(example.get('source_path'), 0) + 1
         except (OSError, ValueError, AttributeError, TypeError):

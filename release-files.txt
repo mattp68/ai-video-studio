@@ -146,3 +146,4 @@ style-library/creator_packs.py
 style-library/test_creator_packs.py
 scripts/pack.py
 docs/PACKS.md
+style-library/test_text_encoding.py

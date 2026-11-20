@@ -136,9 +136,9 @@ class TechniqueUpkeepTests(unittest.TestCase):
         self.approve();index._CATALOG_COUNTS=(None,{})
         state=index.review_options(self.p)['techniques']
         self.assertFalse(state['prepared']);self.assertEqual(state['cataloged'],0)
-        data=json.loads(self.catalog.read_text())
+        data=json.loads(self.catalog.read_text(encoding='utf-8'))
         data['techniques']=[{'id':'tech-demo','examples':[{'id':'demo-x','source_path':'projects/demo/review.mp4'},{'id':'demo-y','source_path':'projects/demo/old.mp4'}]}]
-        self.catalog.write_text(json.dumps(data));index._CATALOG_COUNTS=(None,{})
+        self.catalog.write_text(json.dumps(data), encoding='utf-8');index._CATALOG_COUNTS=(None,{})
         self.assertEqual(index.review_options(self.p)['techniques']['cataloged'],1)
 
     def test_completed_zero_technique_source_is_not_repeated(self):
