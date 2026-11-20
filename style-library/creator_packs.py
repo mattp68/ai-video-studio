@@ -611,7 +611,7 @@ class State:
     def __init__(self):
         storage.check_storage()
         for journal in storage.JOURNALS.glob('*/transaction.json'):
-            if json.loads(journal.read_text()).get('state') == 'prepared':
+            if json.loads(journal.read_text(encoding='utf-8')).get('state') == 'prepared':
                 raise PackError('An earlier save needs recovery first. Ask your assistant to recover it, then install the pack.')
         self.raw = {}
         self.catalog_path = self.owner_path(storage.CATALOG)
@@ -686,7 +686,7 @@ def references_to(state, entry_ids, example_keys):
             if m.get('reference_id') in entry_ids or key in example_keys:
                 count['personal_collection_items'] += 1
     try:
-        notes = json.loads(state.notes_path.read_text()).get('notes', []) if state.notes_path.exists() else []
+        notes = json.loads(state.notes_path.read_text(encoding='utf-8')).get('notes', []) if state.notes_path.exists() else []
     except (OSError, ValueError, AttributeError):
         notes = []
     for n in notes if isinstance(notes, list) else []:
@@ -1251,7 +1251,7 @@ def rights_warnings(root, entry):
     media = root / entry['media_path']
     credit = media.with_name(media.name.rsplit('.', 1)[0] + '.music-credit.txt')
     if credit.is_file():
-        first = ' '.join(credit.read_text(errors='replace').split())[:200]
+        first = ' '.join(credit.read_text(encoding='utf-8', errors='replace').split())[:200]
         found.append(f'{label}: has music ({first}). Check the music license allows a paid download, or export a version without it.')
     workdir = (root / entry['composition']).parent if entry.get('composition') else None
     ledgers = [p for p in ([workdir / 'asset-ledger.csv', workdir / 'sound-plan.json'] if workdir else []) if p.is_file()]
@@ -1260,7 +1260,7 @@ def rights_warnings(root, entry):
     for path in ledgers:
         if path.suffix == '.json':
             try:
-                plan = json.loads(path.read_text())
+                plan = json.loads(path.read_text(encoding='utf-8'))
             except (OSError, ValueError):
                 continue
             music = plan.get('music') if isinstance(plan, dict) else None
@@ -1272,7 +1272,7 @@ def rights_warnings(root, entry):
                 found.append(f'{label}: the sound plan uses music ({about}).')
             continue
         try:
-            rows = list(csv.DictReader(io.StringIO(path.read_text(errors='replace'))))
+            rows = list(csv.DictReader(io.StringIO(path.read_text(encoding='utf-8', errors='replace'))))
         except (OSError, csv.Error):
             continue
         flagged, borrowed = {}, 0
@@ -1299,7 +1299,7 @@ def rights_warnings(root, entry):
 def load_overrides(path):
     if path is None:
         return {'entries': {}, 'techniques': {}, 'examples': {}}
-    data = json.loads(Path(path).read_text())
+    data = json.loads(Path(path).read_text(encoding='utf-8'))
     if not isinstance(data, dict) or set(data) - set(OVERRIDE_FIELDS):
         raise PackError('Overrides use entries, techniques and examples.')
     for group, fields in OVERRIDE_FIELDS.items():
@@ -1312,7 +1312,7 @@ def load_overrides(path):
 def find_collection(path, collection_name):
     if not path.is_file():
         raise PackError('This studio has no saved collections yet. Save the pack’s examples to a collection first.')
-    saved = json.loads(path.read_text())
+    saved = json.loads(path.read_text(encoding='utf-8'))
     matches = [c for c in saved.get('collections', []) if not c.get('deleted_at') and c.get('kind') == 'personal'
                and c['name'].casefold() == collection_name.strip().casefold()]
     if len(matches) != 1:
@@ -1333,7 +1333,7 @@ def build(root, collection_name, out, pack_id, version, license_file, name=None,
     collections_path = root / 'style-library' / 'collections.json'
     if not catalog_path.is_file():
         raise PackError('This studio has no library catalog to build from.')
-    catalog = json.loads(catalog_path.read_text())
+    catalog = json.loads(catalog_path.read_text(encoding='utf-8'))
     chosen = find_collection(collections_path, collection_name)
     name = name or chosen['name']
     license_text = Path(license_file).read_text(encoding='utf-8')

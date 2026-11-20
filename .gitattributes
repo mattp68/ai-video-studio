@@ -1,0 +1,3 @@
+# The release gate hashes and string-matches source files; line endings must be
+# identical on every platform, so text files always check out with LF.
+* text=auto eol=lf

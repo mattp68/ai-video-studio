@@ -33,7 +33,7 @@ class ReferenceNoteTests(unittest.TestCase):
         self.slide.write_bytes(b'exact-slide')
         self.catalog = self.base / 'catalog.json'
         self.registry = self.base / 'projects.json'
-        self.registry.write_text('{"projects":[]}')
+        self.registry.write_text('{"projects":[]}', encoding='utf-8')
         self.data = {'entries': [
             {'id': 'video', 'title': 'Creator video', 'creator': 'Demo', 'version': 'V01',
              'media_path': 'references/demo.mp4', 'duration': 10, 'collection': 'reference'},
@@ -48,7 +48,7 @@ class ReferenceNoteTests(unittest.TestCase):
                 {'id': 'second', 'style_id': 'video', 'label': 'Second reveal', 'start': 5, 'end': 8,
                  'source_version': 'V01', 'source_path': 'references/demo.mp4',
                  'source_sha256': hashlib.sha256(self.media.read_bytes()).hexdigest()}]}]}
-        self.catalog.write_text(json.dumps(self.data))
+        self.catalog.write_text(json.dumps(self.data), encoding='utf-8')
         self.patches = [patch.object(index, 'STUDIO', self.root), patch.object(index, 'REGISTRY', self.registry),
                         patch.object(storage, 'BASE', self.base), patch.object(storage, 'CATALOG', self.catalog),
                         patch.object(storage, 'JOURNALS', self.base / 'runtime/review-actions')]
@@ -75,12 +75,12 @@ class ReferenceNoteTests(unittest.TestCase):
     def test_edit_preserves_identity_position_source_and_recoverable_wording(self):
         state = notes.save(self.body('tech-demo', 'first', time=2.5, focus='Opening'))
         notes.save(self.body('video', text='An unrelated saved note.'))
-        before = json.loads((self.base / 'reference-notes.json').read_text())
+        before = json.loads((self.base / 'reference-notes.json').read_text(encoding='utf-8'))
         sources = self.catalog.read_bytes(), self.media.read_bytes(), self.registry.read_bytes()
         result = notes.edit(self.edit_body(state))
         edited = result['notes'][0]
         self.assertNotEqual(edited['content_revision'], state['notes'][0]['content_revision'])
-        raw = json.loads((self.base / 'reference-notes.json').read_text())
+        raw = json.loads((self.base / 'reference-notes.json').read_text(encoding='utf-8'))
         self.assertEqual(raw['notes'][0]['history'][0]['before'], before['notes'][0])
         self.assertEqual(raw['notes'][1], before['notes'][1])
         for key, value in before['notes'][0].items():
@@ -203,9 +203,9 @@ class ReferenceNoteTests(unittest.TestCase):
 
     def test_existing_multiple_directions_keep_each_record_and_copy_without_a_migration(self):
         notes.save(self.body('tech-demo', 'first'))
-        path = self.base / 'reference-notes.json';data = json.loads(path.read_text())
+        path = self.base / 'reference-notes.json';data = json.loads(path.read_text(encoding='utf-8'))
         second = copy.deepcopy(data['notes'][0]);second['id'] = str(uuid.uuid4());second['text'] = 'Another earlier instruction.'
-        data['notes'].append(second);path.write_text(json.dumps(data));before = path.read_bytes()
+        data['notes'].append(second);path.write_text(json.dumps(data), encoding='utf-8');before = path.read_bytes()
         current = notes.current('tech-demo', 'first')
         self.assertEqual(len(current['notes']), 2);self.assertEqual(before, path.read_bytes())
         request = self.edit_body(current) | {'note_id': second['id'], 'revision': current['notes'][1]['content_revision'], 'text': 'The revised second instruction.'}
@@ -227,11 +227,11 @@ class ReferenceNoteTests(unittest.TestCase):
 
     def test_preserved_technique_source_keeps_its_saved_note_context(self):
         before=notes.save(self.body('tech-demo','first'))
-        data=json.loads(self.catalog.read_text());old=data['entries'][0]
+        data=json.loads(self.catalog.read_text(encoding='utf-8'));old=data['entries'][0]
         archived=copy.deepcopy(old);archived.update(id='video-saved-v01',archived_from='video')
         data['entries'].append(archived)
         for x in data['techniques'][0]['examples']:x['style_id']=archived['id']
-        old['version']='V02';self.catalog.write_text(json.dumps(data))
+        old['version']='V02';self.catalog.write_text(json.dumps(data), encoding='utf-8')
         after=notes.current('tech-demo','first')
         self.assertEqual(before['context_revision'],after['context_revision'])
         self.assertEqual(before['notes'],after['notes'])
@@ -360,17 +360,17 @@ class ReferenceNoteTests(unittest.TestCase):
 
     def test_corrupt_symlink_and_escaped_sources_are_preserved(self):
         path = self.base / 'reference-notes.json'
-        path.write_text('{bad')
+        path.write_text('{bad', encoding='utf-8')
         with self.assertRaises(notes.NoteError): notes.current('video')
-        self.assertEqual(path.read_text(), '{bad')
+        self.assertEqual(path.read_text(encoding='utf-8'), '{bad')
         outside = self.root / 'outside.json'
-        outside.write_text('{"schema_version":1,"notes":[]}')
+        outside.write_text('{"schema_version":1,"notes":[]}', encoding='utf-8')
         path.unlink(); path.symlink_to(outside)
         with self.assertRaises(notes.NoteError): notes.current('video')
-        self.assertEqual(outside.read_text(), '{"schema_version":1,"notes":[]}')
+        self.assertEqual(outside.read_text(encoding='utf-8'), '{"schema_version":1,"notes":[]}')
         path.unlink()
         self.data['entries'][0]['media_path'] = '../outside.mp4'
-        self.catalog.write_text(json.dumps(self.data))
+        self.catalog.write_text(json.dumps(self.data), encoding='utf-8')
         with self.assertRaises(notes.NoteError): notes.current('video')
 
     def test_concurrent_saves_merge_and_external_catalog_changes_are_guarded(self):
@@ -387,11 +387,11 @@ class ReferenceNoteTests(unittest.TestCase):
         commit = storage.commit
         external = copy.deepcopy(self.data) | {'owner_change': 'Keep this'}
         def changed(*args, **kwargs):
-            self.catalog.write_text(json.dumps(external))
+            self.catalog.write_text(json.dumps(external), encoding='utf-8')
             return commit(*args, **kwargs)
         body = self.body()
         with patch.object(storage, 'commit', side_effect=changed), self.assertRaises(storage.ReviewError): notes.save(body)
-        self.assertEqual(json.loads(self.catalog.read_text()), external)
+        self.assertEqual(json.loads(self.catalog.read_text(encoding='utf-8')), external)
         self.assertEqual(len(notes.current('video')['notes']), 2)
 
     def test_source_changed_at_commit_cannot_receive_an_old_timestamp(self):
@@ -407,7 +407,7 @@ class ReferenceNoteTests(unittest.TestCase):
     def test_prepared_recovery_blocks_new_writes(self):
         body = self.body()
         folder = storage.JOURNALS / 'unfinished'; folder.mkdir(parents=True)
-        (folder / 'transaction.json').write_text('{"state":"prepared"}')
+        (folder / 'transaction.json').write_text('{"state":"prepared"}', encoding='utf-8')
         with self.assertRaises(Exception): notes.save(body)
         self.assertFalse((self.base / 'reference-notes.json').exists())
 

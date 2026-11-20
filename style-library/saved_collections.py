@@ -35,7 +35,7 @@ def read():
 
 
 def catalog():
-    return json.loads(storage.CATALOG.read_text()) if storage.CATALOG.exists() else {'entries': [], 'techniques': []}
+    return json.loads(storage.CATALOG.read_text(encoding='utf-8')) if storage.CATALOG.exists() else {'entries': [], 'techniques': []}
 
 
 def identity(member):
@@ -206,4 +206,4 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('action', choices=['list', 'import']);parser.add_argument('manifest', nargs='?')
     args = parser.parse_args()
-    print(json.dumps(current() if args.action == 'list' else import_pack(json.loads(Path(args.manifest).read_text())), ensure_ascii=False))
+    print(json.dumps(current() if args.action == 'list' else import_pack(json.loads(Path(args.manifest).read_text(encoding='utf-8'))), ensure_ascii=False))

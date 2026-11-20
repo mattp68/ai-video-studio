@@ -14,7 +14,12 @@ PY = ROOT / '.venv' / ('Scripts/python.exe' if os.name == 'nt' else 'bin/python'
 ENV = {**os.environ, 'HYPERFRAMES_NO_UPDATE_CHECK': '1', 'HYPERFRAMES_NO_TELEMETRY': '1', 'HYPERFRAMES_SKIP_SKILLS': '1'}
 
 def run(args):
-    subprocess.run([str(a) for a in args], cwd=ROOT, env=ENV, check=True)
+    cmd = [str(a) for a in args]
+    if os.name == 'nt':
+        # npm and local .bin shims are .cmd files that CreateProcess cannot resolve without a shell.
+        resolved = shutil.which(cmd[0])
+        if resolved: cmd[0] = resolved
+    subprocess.run(cmd, cwd=ROOT, env=ENV, check=True)
 
 def local_package_present(name):
     if not PY.is_file(): return False
@@ -98,7 +103,9 @@ def main():
         if args.transcription:
             run([PY,'-m','pip','install','--require-hashes','-r','requirements-transcription-macos.lock.txt'])
         run(['npm','ci','--ignore-scripts'])
-        run(['node_modules/.bin/hyperframes','browser','ensure'])
+        # Start the pinned CLI with node, as hf.py does. On Windows the .bin shim is a .cmd file that
+        # cmd.exe misreads when it is given as a relative path with forward slashes.
+        run(['node', ROOT/'node_modules/hyperframes/bin/hyperframes.mjs', 'browser', 'ensure'])
         assets = ROOT/'examples/studio-check/assets'; assets.mkdir(parents=True, exist_ok=True)
         shutil.copy2(ROOT/'node_modules/gsap/dist/gsap.min.js', assets/'gsap.min.js')
     for name in ['catalog','projects','settings']:

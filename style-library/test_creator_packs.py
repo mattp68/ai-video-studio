@@ -60,7 +60,7 @@ class Fixture:
         return self.write(relative, json.dumps(value, indent=2) + '\n')
 
     def read(self, relative):
-        return json.loads((self.root / relative).read_text())
+        return json.loads((self.root / relative).read_text(encoding='utf-8'))
 
     @contextlib.contextmanager
     def active(self):
@@ -284,7 +284,7 @@ class BuildTests(PackTestCase):
             'examples': {'tech-orbit@orbit-demo': {'label': 'Five cards orbit'}}})
         recipes = self.tmp / 'recipes'
         (recipes / 'tech-orbit' / 'assets').mkdir(parents=True)
-        (recipes / 'tech-orbit' / 'index.html').write_text('<!doctype html><div class="orbit"></div>')
+        (recipes / 'tech-orbit' / 'index.html').write_text('<!doctype html><div class="orbit"></div>', encoding='utf-8')
         (recipes / 'tech-orbit' / 'assets' / 'card.png').write_bytes(png('card'))
         (recipes / 'tech-orbit' / '.DS_Store').write_bytes(b'junk')
         (recipes / 'tech-orbit' / 'assets' / 'author-take.mp4').write_bytes(video('take'))

@@ -127,7 +127,7 @@ def read_json(path, default):
     try:
         if path.is_symlink() or not path.is_file() or path.stat().st_size > 64_000_000:
             return default
-        return json.loads(path.read_text())
+        return json.loads(path.read_text(encoding='utf-8'))
     except (OSError, ValueError):
         return default
 
@@ -182,7 +182,7 @@ def families_in_project(project, catalog, known):
         path = project_file(project['id'], note.get('path') if isinstance(note, dict) else None, {'.md', '.txt'})
         if path:
             try:
-                used.update(LINKED.findall(path.read_text(errors='replace')))
+                used.update(LINKED.findall(path.read_text(encoding='utf-8', errors='replace')))
             except OSError:
                 pass
     return used & known
@@ -459,6 +459,9 @@ def main(argv=None):
     parser.add_argument('--base-url', help='Studio address for full library links (default: the running studio, if known).')
     parser.add_argument('--studio', help='Read another studio folder instead of this one (read-only).')
     args = parser.parse_args(argv)
+    # Callers parse UTF-8 JSON; Windows would otherwise print in its code page when piped.
+    if callable(getattr(sys.stdout, 'reconfigure', None)):
+        sys.stdout.reconfigure(encoding='utf-8')
     if args.studio:
         STUDIO = Path(args.studio).expanduser().resolve()
     try:

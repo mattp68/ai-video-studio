@@ -220,6 +220,14 @@ class TechniqueRecallTests(unittest.TestCase):
         with contextlib.redirect_stdout(out):
             code = recall.main(['--beat', 'numbered list', '--beat', 'snap zoom', '--exclude', 'tech-checklist'])
         self.assertEqual((code, [len(b['results']) > 0 for b in json.loads(out.getvalue())['beats']]), (0, [False, True]))
+        self.techniques[0]['title'] = 'Checklist reveal ✅ 番号'
+        self.save()
+        raw = io.BytesIO()
+        piped = io.TextIOWrapper(raw, encoding='cp1252')  # A Windows pipe's default code page.
+        with contextlib.redirect_stdout(piped):
+            code = recall.main(['--query', 'numbered list', '--recent', '0', '--limit', '1'])
+        piped.flush()
+        self.assertEqual((code, json.loads(raw.getvalue().decode('utf-8'))['results'][0]['title']), (0, 'Checklist reveal ✅ 番号'))
         out = io.StringIO()
         with contextlib.redirect_stdout(out):
             code = recall.main(['--query', 'x', '--project', 'missing'])
