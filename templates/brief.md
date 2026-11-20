@@ -27,6 +27,7 @@
 - Brand reuse, partnership ads / whitelisting, and other contracted uses:
 - Publishing channel URLs and expected first publication date:
 - Reference(s) and what to borrow:
+- Library technique picks: on (default) / off:
 - Creative preferences / avoid:
 - Delivery: finished MP4 plus reusable code project
 - Notes / unresolved questions:
