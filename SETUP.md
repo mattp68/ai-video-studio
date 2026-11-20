@@ -10,7 +10,7 @@ The home base needs Python 3.11+. Full media work also needs Node 22.12.0 or new
 
 If Python is not available, the assistant cannot run this script yet. Install it from [Python’s official downloads](https://www.python.org/downloads/) first. Missing Node/npm and FFmpeg should come from [Node’s downloads](https://nodejs.org/en/download) and [FFmpeg’s official download guidance](https://ffmpeg.org/download.html), or an established OS package manager with your authorization. On a managed work computer, follow your organization’s installation process. The setup script reports missing system tools; it does not install them or alter your shell/profile.
 
-Full media validation so far is Apple Silicon macOS with Python 3.13, Node 23 and FFmpeg 9. Other platforms need the checks in docs/PILOT.md; do not claim full Windows or Intel/Linux speech compatibility. See [the capability guide](docs/CAPABILITIES.md).
+Full media validation so far is Apple Silicon macOS with Python 3.13, Node 23 and FFmpeg 9. Other platforms need the checks in docs/PILOT.md; do not claim full Windows or Intel/Linux speech compatibility. Windows has early support: setup, the smoke test's edit and render, and the automated suites pass on Windows in CI, but it has not yet been used on a real Windows PC, and on-device transcription is Apple Silicon only. See [the capability guide](docs/CAPABILITIES.md).
 
 ## 2. Install project dependencies
 
