@@ -1,4 +1,9 @@
-"""Render a synthetic Blender clip and verify its use in a disposable HyperFrames edit."""
+"""Render synthetic Blender clips and verify their use in a disposable HyperFrames edit.
+
+Exercises scripts/blender_render.py end to end in a temporary version folder: the
+render-time estimate, an opaque clip and a transparent overlay, removal of the
+frames from .scratch, and the HyperFrames composite. Skips when Blender is absent.
+"""
 import argparse
 import json
 from pathlib import Path
@@ -8,6 +13,7 @@ import sys
 import tempfile
 
 from setup import ROOT, blender_capability
+from blender_render import Shot
 
 
 def run(args, **kwargs):
@@ -21,6 +27,10 @@ def sample(path, select, crop):
                capture_output=True).stdout
 
 
+def difference(a, b):
+    return sum(abs(x - y) for x, y in zip(a, b)) / max(1, len(a))
+
+
 def main():
     argparse.ArgumentParser(description=__doc__).parse_args()
     capability = blender_capability()
@@ -31,14 +41,21 @@ def main():
         raise SystemExit(capability['detail'])
     example = ROOT / 'examples/blender-check'
     with tempfile.TemporaryDirectory(prefix='ai-video-studio-blender-') as directory:
-        work = Path(directory)
-        (work / 'assets').mkdir()
+        work = Path(directory)  # Stands in for a project version folder.
         shutil.copyfile(example / 'index.html', work / 'index.html')
-        run([capability['executable'], '--background', '--factory-startup', '--disable-autoexec',
-             '--python-exit-code', '1', '--python', example / 'scene.py', '--', work], timeout=180)
-        insert = work / 'assets/insert.mp4'
-        run(['ffmpeg', '-nostdin', '-v', 'error', '-framerate', '30', '-start_number', '1',
-             '-i', work / 'frame-%04d.png', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', insert])
+        estimate = Shot(work, example / 'scene.py', 'insert', capability=capability).estimate()
+        if estimate['frames'] != 12 or not (work / estimate['preview']).is_file():
+            raise RuntimeError('The render-time estimate did not report the fixture frames and preview')
+        opaque = Shot(work, example / 'scene.py', 'insert', capability=capability).render()
+        overlay = Shot(work, example / 'scene.py', 'overlay', alpha=True, capability=capability).render()
+        for result in (opaque, overlay):
+            if not result['frames_removed'] or (work / '.scratch/blender' / result['name']).exists():
+                raise RuntimeError('Frames were left in .scratch after encoding')
+            if not (work / result['record']).is_file():
+                raise RuntimeError('Missing render record')
+        if sorted(path.name for path in (work / 'assets/blender').iterdir()) != [
+                'insert.json', 'insert.mp4', 'overlay.json', 'overlay.webm']:
+            raise RuntimeError('Only the final clips and their records should be kept')
         review = work / 'review.mp4'
         run([sys.executable, ROOT / 'scripts/hf.py', 'render', work, '--workers', '1',
              '--fps', '30', '--strict', '--output', review], timeout=180)
@@ -46,18 +63,27 @@ def main():
                                 '-show_entries', 'stream=width,height,nb_frames', '-of', 'json', review],
                                capture_output=True).stdout)
         video, = probe['streams']
-        if (video['width'], video['height'], int(video['nb_frames'])) != (320, 440, 12):
+        if (video['width'], video['height'], int(video['nb_frames'])) != (640, 440, 12):
             raise RuntimeError('Unexpected size or frame count in the composite')
-        source = sample(insert, 'eq(n,2)+eq(n,10)', '320:320:0:0')
-        composite = sample(review, 'eq(n,2)+eq(n,10)', '320:320:0:60')
-        stride = 64 * 64 * 3
+        frames, stride = 'eq(n,2)+eq(n,10)', 64 * 64 * 3
+        source = sample(work / opaque['clip'], frames, '320:320:0:0')
+        composite = sample(review, frames, '320:320:0:60')
         if len(source) != 2 * stride or len(composite) != 2 * stride:
             raise RuntimeError('Missing comparison frames')
-        if sum(abs(a - b) for a, b in zip(source[:stride], source[stride:])) / stride < 2:
+        if difference(source[:stride], source[stride:]) < 2:
             raise RuntimeError('The Blender fixture did not animate')
-        if sum(abs(a - b) for a, b in zip(source, composite)) / len(source) > 8:
+        if difference(source, composite) > 8:
             raise RuntimeError('The HyperFrames output did not preserve the Blender insert')
-        print(f"Blender {capability['version']} rendered a 12-frame insert and passed the HyperFrames handoff.")
+        # The overlay keeps the lit cube and lets the composition background show around it.
+        background = bytes((0x6b, 0x3f, 0x1f)) * (64 * 64)
+        overlay_corner = sample(review, 'eq(n,2)', '40:40:320:60')
+        insert_corner = sample(review, 'eq(n,2)', '40:40:0:60')
+        if difference(overlay_corner, background) > 8 or difference(insert_corner, background) < 16:
+            raise RuntimeError('The transparent overlay did not show the composition background')
+        if difference(sample(review, 'eq(n,2)', '96:96:432:172'), sample(review, 'eq(n,2)', '96:96:112:172')) > 10:
+            raise RuntimeError('The transparent overlay did not preserve the Blender object')
+        print(f"Blender {capability['version']} estimated, rendered an opaque insert and a transparent overlay, "
+              f"kept only the final clips, and passed the HyperFrames handoff. Estimate: {estimate['estimate']}.")
 
 
 if __name__ == '__main__':

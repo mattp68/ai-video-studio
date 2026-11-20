@@ -35,6 +35,8 @@ python3 style-library/library.py validate
 python3 scripts/smoke.py
 ```
 
+Blender is optional and setup never installs it. If the report shows `blender` as `not_installed` after a full setup, ask the creator once: **Add Blender for 3D shots?** Explain that it is a separate free app of about 1 GB for real 3D models, physics and camera flights through a 3D scene, and that most videos never need it. Install it only if they say yes, from an official source in the report's `install_options` (blender.org, or the platform's package manager such as the Homebrew cask on macOS), then run `python3 scripts/blender_smoke.py`. A no is fine; the chat asks again only if a storyboard later needs a Blender shot. See docs/WORKFLOW.md.
+
 Smoke generates a small synthetic source, makes a two-cut assembly/time map/script, checks a rendered animation and prepares a demo checkpoint/actual board frame. It does not approve the demo. Read its report before saying setup passed. The sample does not assess human performance, real spoken joins, caption accuracy or artistic quality. A previous complete smoke run is preserved rather than silently rerun; use a fresh directory for a new full test.
 
 ## 4. Open your home base

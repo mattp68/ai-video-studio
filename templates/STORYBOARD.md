@@ -16,6 +16,7 @@
 - On-screen copy:
 - Layout, portrait/gesture and safe placement:
 - Real media / conceptual illustration / generated asset:
+- Tool: HyperFrames / HyperFrames Three.js / Blender (Blender only: the reason, estimated render time and HyperFrames alternative):
 - Entrance, movement, hold and exit:
 - Transition into the next frame:
 - Sound intent (including intentional silence):

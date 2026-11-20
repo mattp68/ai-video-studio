@@ -2,7 +2,7 @@
 
 Open an editing chat from the studio folder. Ask your assistant to update AI Video Studio while preserving projects, media, references, settings and saved feedback. The Updates page has a ready-to-copy request and links to the official repository and releases: https://github.com/mattp68/ai-video-studio . Checking releases is separate from installing an update.
 
-Blender is an optional local capability. The update adds detection and editing guidance. If Blender is already installed, `python3 scripts/setup.py --check` reports its version and `python3 scripts/blender_smoke.py` verifies a disposable render. The normal setup and update workflow works without it.
+Blender is optional, and an update never installs it. If it is already installed, `python3 scripts/setup.py --check` reports its version and `python3 scripts/blender_smoke.py` verifies a disposable render. If it is not, nothing changes: the chat offers it only when a storyboard first needs a Blender shot (see docs/WORKFLOW.md).
 
 ## Existing installations with media tooling
 

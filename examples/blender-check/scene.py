@@ -1,7 +1,10 @@
-"""Render a tiny authored 3D fixture. This file runs inside Blender."""
-from pathlib import Path
-import sys
+"""Build a tiny authored 3D fixture. This file runs inside Blender.
 
+scripts/blender_render.py runs a scene script like this one, then sets the output
+format and renders it. A scene script only builds the scene: objects, materials,
+lights, camera, resolution, frame rate and frame range. It never renders or writes
+files itself.
+"""
 import bpy
 from mathutils import Vector
 
@@ -10,17 +13,16 @@ def point_at(obj, target):
     obj.rotation_euler = (Vector(target) - obj.location).to_track_quat("-Z", "Y").to_euler()
 
 
-output = Path(sys.argv[sys.argv.index("--") + 1]).resolve()
 bpy.ops.wm.read_factory_settings(use_empty=True)
 scene = bpy.context.scene
-scene.render.engine = "BLENDER_EEVEE"
+try:
+    scene.render.engine = "BLENDER_EEVEE"
+except TypeError:  # Blender 4.2 to 4.5 name the same engine BLENDER_EEVEE_NEXT.
+    scene.render.engine = "BLENDER_EEVEE_NEXT"
 scene.render.resolution_x = 320
 scene.render.resolution_y = 320
 scene.render.resolution_percentage = 100
 scene.render.fps = 30
-scene.render.image_settings.file_format = "PNG"
-scene.render.image_settings.color_mode = "RGB"
-scene.render.filepath = str(output / "frame-")
 scene.frame_start = 1
 scene.frame_end = 12
 scene.world = bpy.data.worlds.new("Slate background")
@@ -49,4 +51,3 @@ point_at(light, (0, 0, 0))
 bpy.ops.object.camera_add(location=(3.3, -5, 3.1))
 scene.camera = bpy.context.object
 point_at(scene.camera, (0, 0, 0))
-bpy.ops.render.render(animation=True)

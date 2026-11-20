@@ -34,13 +34,39 @@ def node_supported():
         return len(version) == 3 and version >= (22, 12, 0)
     except (OSError, ValueError, subprocess.SubprocessError): return False
 
-def blender_capability():
-    """Find and probe an installed Blender without changing media readiness."""
+BLENDER_OFFER = 'Add Blender for 3D shots?'
+BLENDER_DOWNLOAD = 'https://www.blender.org/download/'
+
+def blender_install_options():
+    """Official ways to add Blender on this computer. Setup lists them and never runs them."""
+    system = platform.system()
+    options = []
+    if system == 'Darwin' and shutil.which('brew'):
+        options.append({'source': 'Homebrew cask', 'command': 'brew install --cask blender'})
+    elif system == 'Windows' and shutil.which('winget'):
+        options.append({'source': 'winget', 'command': 'winget install --exact --id BlenderFoundation.Blender'})
+    elif system == 'Linux' and shutil.which('snap'):
+        options.append({'source': 'Snap Store (published by the Blender Foundation)',
+                        'command': 'sudo snap install blender --classic'})
+    options.append({'source': 'blender.org', 'url': BLENDER_DOWNLOAD})
+    return options
+
+def blender_candidates():
     candidates = [shutil.which('blender')]
-    if platform.system() == 'Darwin':
+    system = platform.system()
+    if system == 'Darwin':
         app = Path('Blender.app/Contents/MacOS/Blender')
         candidates.extend(str(folder / app) for folder in
                           (Path('/Applications'), Path.home() / 'Applications'))
+    elif system == 'Windows' and os.environ.get('ProgramFiles'):
+        # The official installer and winget use "Blender Foundation/Blender <version>".
+        folders = Path(os.environ['ProgramFiles'], 'Blender Foundation').glob('Blender*/blender.exe')
+        candidates.extend(str(path) for path in sorted(folders, reverse=True))
+    return candidates
+
+def blender_capability():
+    """Find and probe an installed Blender without changing media readiness."""
+    candidates = blender_candidates()
     found = False
     for executable in dict.fromkeys(candidates):
         if not executable or not Path(executable).is_file():
@@ -54,10 +80,15 @@ def blender_capability():
         match = re.search(r'^Blender (\d+\.\d+\.\d+)', result.stdout, re.MULTILINE)
         if match:
             return {'status': 'ready_for_smoke', 'version': match[1], 'executable': executable,
-                    'detail': 'Optional local 3D. Run scripts/blender_smoke.py to check rendering and compositing.'}
+                    'detail': 'Optional real 3D. Run scripts/blender_smoke.py to check rendering and compositing. '
+                              'Use it only for shots docs/WORKFLOW.md sends to Blender, after the creator approves them in the storyboard.'}
     if found:
-        return {'status': 'unavailable', 'detail': 'Blender was found but its version could not be verified.'}
-    return {'status': 'not_installed', 'detail': 'Optional local 3D. The standard editing workflow is available without Blender.'}
+        return {'status': 'unavailable', 'install_options': blender_install_options(),
+                'detail': 'Blender was found but its version could not be verified. Ask the creator before reinstalling it.'}
+    return {'status': 'not_installed', 'offer': BLENDER_OFFER, 'install_options': blender_install_options(),
+            'detail': 'Optional and not part of the studio. Most videos never need it: HyperFrames covers motion graphics '
+                      'and simple 3D. Blender is a separate free app of about 1 GB. Ask the creator once after setup and '
+                      'install it only with their OK, from one of install_options. See SETUP.md.'}
 
 def guard_renderer_update():
     """Never replace dependencies underneath this installation's live editors."""
@@ -131,7 +162,11 @@ def main():
     for name in ['catalog','projects','settings']:
         target = ROOT/f'style-library/{name}.json'
         if not target.exists(): shutil.copy2(ROOT/f'style-library/{name}.example.json',target)
-    print(json.dumps(capability_report(), indent=2))
+    report = capability_report()
+    print(json.dumps(report, indent=2))
     print('Setup complete. Existing projects/settings were preserved. Start with: python3 style-library/start.py')
+    if not args.studio_only and report.get('capabilities', {}).get('blender', {}).get('status') == 'not_installed':
+        print('Optional: ' + BLENDER_OFFER + ' Most videos do not need Blender, and setup did not install it. '
+              'Ask the creator once and install it only with their OK (see SETUP.md).')
 
 if __name__ == '__main__': main()
