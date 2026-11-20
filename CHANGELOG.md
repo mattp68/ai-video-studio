@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Optional Blender for real 3D shots. HyperFrames stays the default for motion graphics, and its Three.js adapter covers simple 3D. The chat uses Blender only for real 3D models, realistic lighting and materials, physics or camera flights through a 3D scene, and only after you approve that shot, with its reason and estimated render time, in the storyboard.
+- Blender is never installed with the studio or included in a release. Setup asks "Add Blender for 3D shots?" and lists official sources (blender.org or your package manager). The chat asks again only when a storyboard first needs a Blender shot.
+- `python3 scripts/blender_render.py` estimates a shot's render time, renders its frames in the version's `.scratch` folder, keeps only the final clip and warns when disk space is low. `python3 scripts/blender_smoke.py` checks an installed Blender end to end.
+
 ## 0.1.0-beta.16 — Install creator packs — 2026-11-19
 
 - Install a creator pack with one chat request. `python3 scripts/pack.py install <file>` checks the pack file (or the folder your browser unzipped), adds its videos, techniques and exact examples to your library under the pack's own IDs, and adds a collection with the pack's name. Your projects, personal collections, notes and approvals stay as they are.

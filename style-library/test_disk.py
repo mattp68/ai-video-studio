@@ -94,6 +94,25 @@ class RenderSpaceTests(unittest.TestCase):
         self.assertIsNone(disk.render_space_warning(['render', 'demo'], 10, free=broken))
 
 
+class FramesSpaceTests(unittest.TestCase):
+    def test_warns_when_the_frames_or_the_usual_margin_do_not_fit(self):
+        self.assertIsNone(disk.frames_space_warning('demo/.scratch', 2e9, 10, free=lambda _: 50e9))
+        message = disk.frames_space_warning('demo/.scratch', 2e9, 10, free=lambda _: 5e9)
+        self.assertIn('5.0 GB free', message)
+        self.assertIn('2.0 GB of frames', message)
+        # The frames need room on top of the usual margin.
+        self.assertIn('30.0 GB of frames', disk.frames_space_warning('demo', 30e9, 10, free=lambda _: 35e9))
+        self.assertIsNone(disk.frames_space_warning('demo', 30e9, 10, free=lambda _: 41e9))
+
+    def test_threshold_can_be_turned_off_and_a_failed_check_never_blocks(self):
+        with patch.dict(os.environ, {'AI_VIDEO_STUDIO_MIN_FREE_GB': '0'}):
+            self.assertIsNone(disk.frames_space_warning('demo', 30e9, free=lambda _: 0))
+
+        def broken(_):
+            raise OSError('unavailable')
+        self.assertIsNone(disk.frames_space_warning('demo', 30e9, 10, free=broken))
+
+
 class NewVersionTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()

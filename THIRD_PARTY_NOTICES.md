@@ -10,4 +10,6 @@ The generic saved-link SVG poster is project-authored and contains no third-part
 
 The synthetic smoke source is produced locally by FFmpeg color/test pattern and tone generators. The sample composition/board/text are project-authored technical fixtures. No human likeness, voice, downloaded reference video, brand logo, commercial sound effect or customer footage is included. Generated outputs stay ignored and are not in the starter source export.
 
+Blender (GPL) is not included in the studio or its releases. It is optional, and users install it themselves from blender.org or their platform's package manager. The studio ships only its own scripts that detect and run an installed Blender, plus a small authored test scene.
+
 FFmpeg and the render browser are separate tools with their own licenses/distribution notices. Optional MLX Whisper/model dependencies and any generated/cloud media retain upstream terms; users supply their own account and assess usage rights. No commercial subscription rights are granted by this kit.

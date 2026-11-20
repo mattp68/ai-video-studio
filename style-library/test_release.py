@@ -56,6 +56,18 @@ class ReleaseTests(unittest.TestCase):
         for name in ['style-library/dist/assets/reference-previews/cover.svg','style-library/reference-notes.json','style-library/writing-voice.json','style-library/collections.json','style-library/packs.json','style-library/catalog.json','projects/demo/STATUS.md','references/demo/source.mp4','style-library/references/demo/intake.md','.env','secret.key','../outside.md']:
             self.select(name+'\n')
             with self.subTest(name=name),self.assertRaises(ValueError):export.sources()
+    def test_blender_and_other_applications_are_never_shipped(self):
+        for name in ['Blender.app/Contents/MacOS/Blender','tools/blender','tools/Blender.exe','Blender-5.2.2-macos-arm64.dmg',
+                     'blender-5.2.2-windows-x64.msi','Blender-5.2.2-x86_64.AppImage','examples/blender-check/scene.blend']:
+            target=self.root/name;target.parent.mkdir(parents=True,exist_ok=True);target.write_text('fixture')
+            self.select(name+'\n')
+            with self.subTest(name=name),self.assertRaisesRegex(ValueError,'never shipped'):export.sources()
+    def test_the_release_ships_only_blender_text_sources(self):
+        actual=Path(__file__).resolve().parents[1]
+        with patch.object(export,'ROOT',actual):
+            names=[name for name,_ in export.sources() if 'blender' in name.lower()]
+        self.assertEqual(sorted(names),['examples/blender-check/index.html','examples/blender-check/scene.py',
+                                        'scripts/blender_render.py','scripts/blender_smoke.py','style-library/test_blender_render.py'])
     def test_symlinks_and_duplicate_paths_are_rejected(self):
         (self.root/'alias.md').symlink_to(self.root/'README.md')
         for value in ['alias.md\n','README.md\nREADME.md\n']:

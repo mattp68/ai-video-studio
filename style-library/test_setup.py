@@ -54,10 +54,69 @@ class RendererUpdateTests(unittest.TestCase):
             with patch.object(setup,'ROOT',root),patch.object(setup.subprocess,'run',side_effect=OSError('unavailable')):
                 with self.assertRaisesRegex(SystemExit,'Could not verify'):setup.guard_renderer_update()
 
+class BlenderCapabilityTests(unittest.TestCase):
+    def test_missing_or_failed_blender_stays_optional(self):
+        with patch.object(setup.platform, 'system', return_value='Linux'):
+            with patch.object(setup.shutil, 'which', return_value=None):
+                self.assertEqual(setup.blender_capability()['status'], 'not_installed')
+            with tempfile.TemporaryDirectory() as directory:
+                tool = Path(directory) / 'blender'
+                tool.touch()
+                with patch.object(setup.shutil, 'which', return_value=str(tool)):
+                    with patch.object(setup.subprocess, 'run', side_effect=OSError('unavailable')):
+                        self.assertEqual(setup.blender_capability()['status'], 'unavailable')
+                    result = setup.subprocess.CompletedProcess([], 0, stdout='Blender 5.2.2 LTS')
+                    with patch.object(setup.subprocess, 'run', return_value=result):
+                        report = setup.blender_capability()
+                    self.assertEqual((report['status'], report['version']), ('ready_for_smoke', '5.2.2'))
+
+    def test_missing_blender_is_offered_with_official_sources_and_never_installed(self):
+        tools = {'Darwin': 'brew', 'Windows': 'winget', 'Linux': 'snap'}
+        commands = {'Darwin': 'brew install --cask blender', 'Windows': 'winget install --exact --id BlenderFoundation.Blender',
+                    'Linux': 'sudo snap install blender --classic'}
+        for system, tool in tools.items():
+            with self.subTest(system=system), patch.object(setup.platform, 'system', return_value=system), \
+                    patch.object(setup, 'blender_candidates', return_value=[None]), \
+                    patch.object(setup.shutil, 'which', side_effect=lambda name, tool=tool: '/bin/' + name if name == tool else None), \
+                    patch.object(setup.subprocess, 'run', side_effect=AssertionError('Nothing runs or installs')):
+                report = setup.blender_capability()
+                self.assertEqual((report['status'], report['offer']), ('not_installed', 'Add Blender for 3D shots?'))
+                self.assertEqual([option.get('command') for option in report['install_options']], [commands[system], None])
+                self.assertEqual(report['install_options'][-1]['url'], 'https://www.blender.org/download/')
+            with self.subTest(system=system, package_manager=False), patch.object(setup.platform, 'system', return_value=system), \
+                    patch.object(setup.shutil, 'which', return_value=None):
+                self.assertEqual(setup.blender_install_options(), [{'source': 'blender.org', 'url': 'https://www.blender.org/download/'}])
+
+    def test_windows_finds_the_official_installer_folder(self):
+        with tempfile.TemporaryDirectory() as folder:
+            tool = Path(folder) / 'Blender Foundation/Blender 5.2/blender.exe'
+            tool.parent.mkdir(parents=True)
+            tool.touch()
+            with patch.object(setup.platform, 'system', return_value='Windows'), patch.dict(setup.os.environ, {'ProgramFiles': folder}), \
+                    patch.object(setup.shutil, 'which', return_value=None):
+                self.assertEqual(setup.blender_candidates(), [None, str(tool)])
+
+    def test_full_setup_offers_missing_blender_but_studio_only_does_not(self):
+        missing = {'capabilities': {'blender': {'status': 'not_installed'}}}
+        for argv, offered in [(['setup'], True), (['setup', '--studio-only'], False)]:
+            with self.subTest(argv=argv), tempfile.TemporaryDirectory() as folder:
+                root = Path(folder); base = root / 'style-library'; base.mkdir()
+                for name in ['catalog', 'projects', 'settings']: (base / f'{name}.example.json').write_text('{}')
+                gsap = root / 'node_modules/gsap/dist/gsap.min.js'; gsap.parent.mkdir(parents=True); gsap.write_text('gsap')
+                python = root / '.venv/bin/python'; python.parent.mkdir(parents=True); python.touch()
+                output = io.StringIO()
+                with patch.object(setup, 'ROOT', root), patch.object(setup, 'PY', python), patch.object(sys, 'argv', argv), \
+                        patch.object(setup.shutil, 'which', return_value='/tool'), patch.object(setup, 'node_supported', return_value=True), \
+                        patch.object(setup, 'guard_renderer_update'), patch.object(setup, 'run'), \
+                        patch.object(setup, 'capability_report', return_value=missing), contextlib.redirect_stdout(output):
+                    setup.main()
+                self.assertEqual('Add Blender for 3D shots?' in output.getvalue(), offered)
+                self.assertNotIn('brew', output.getvalue())
+
 class CapabilityTests(unittest.TestCase):
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory();self.root=Path(self.tmp.name)
-        self.patches=[patch.object(setup,'ROOT',self.root),patch.object(setup,'PY',self.root/'.venv/bin/python'),
+        self.patches=[patch.object(setup,'ROOT',self.root),patch.object(setup,'blender_capability',return_value={'status':'not_installed'}),patch.object(setup,'PY',self.root/'.venv/bin/python'),
                       patch.object(setup.shutil,'which',return_value=None),patch.object(setup,'node_supported',return_value=False),
                       patch.object(setup,'local_package_present',return_value=False),
                       patch.object(setup.platform,'system',return_value='Darwin'),patch.object(setup.platform,'machine',return_value='arm64')]

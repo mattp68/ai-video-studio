@@ -22,6 +22,8 @@ requirements-transcription-macos.pins.txt
 requirements-transcription-macos.lock.txt
 projects/README.md
 references/README.md
+examples/blender-check/index.html
+examples/blender-check/scene.py
 examples/studio-check/index.html
 examples/studio-check/assets/inter-latin-800-normal.woff2
 examples/studio-check/assets/inter-LICENSE.txt
@@ -46,6 +48,8 @@ scripts/hf.py
 scripts/register.py
 scripts/setup.py
 scripts/smoke.py
+scripts/blender_smoke.py
+scripts/blender_render.py
 scripts/studio.py
 style-library/README.md
 style-library/PROJECT-NAVIGATION.md
@@ -84,6 +88,7 @@ BRIEF.md
 STATUS.md
 .github/dependabot.yml
 style-library/test_setup.py
+style-library/test_blender_render.py
 style-library/reference_intake.py
 style-library/test_reference_intake.py
 style-library/dist/reference-ui.js

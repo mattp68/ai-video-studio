@@ -116,6 +116,37 @@ def free_bytes(path):
     return shutil.disk_usage(current).free
 
 
+def minimum_free_gb():
+    """The free-space threshold for render warnings; AI_VIDEO_STUDIO_MIN_FREE_GB=0 turns them off."""
+    try:
+        return float(os.environ.get("AI_VIDEO_STUDIO_MIN_FREE_GB", RENDER_MIN_FREE_GB))
+    except ValueError:
+        return RENDER_MIN_FREE_GB
+
+
+def frames_space_warning(folder, frame_bytes, minimum_gb=None, free=free_bytes):
+    """Plain-language warning when a frame-sequence render (such as Blender) may run out of disk.
+
+    The frames are written to folder (a version's .scratch) before they are encoded
+    into one clip, so that disk needs room for frame_bytes on top of the usual margin.
+    """
+    if minimum_gb is None:
+        minimum_gb = minimum_free_gb()
+    if minimum_gb <= 0:
+        return None
+    try:
+        available = free(folder)
+    except OSError:
+        return None  # The check is advisory; never block a render because it failed.
+    if available >= minimum_gb * 1e9 + frame_bytes:
+        return None
+    return (f"Warning: only {size_label(available)} free on the disk holding the project. This render can write "
+            f"up to {size_label(frame_bytes)} of frames to .scratch before encoding the clip (they are removed "
+            f"afterwards), and the studio suggests keeping {minimum_gb:g} GB free. To see HyperFrames caches you "
+            "can remove, run python3 scripts/hf.py clean --dry-run. Set AI_VIDEO_STUDIO_MIN_FREE_GB=0 to turn off "
+            "this check.")
+
+
 def render_space_warning(argv, minimum_gb=None, free=free_bytes):
     """Plain-language warning when a HyperFrames render may run out of disk, else None.
 
@@ -126,10 +157,7 @@ def render_space_warning(argv, minimum_gb=None, free=free_bytes):
     if not argv or argv[0] != "render":
         return None
     if minimum_gb is None:
-        try:
-            minimum_gb = float(os.environ.get("AI_VIDEO_STUDIO_MIN_FREE_GB", RENDER_MIN_FREE_GB))
-        except ValueError:
-            minimum_gb = RENDER_MIN_FREE_GB
+        minimum_gb = minimum_free_gb()
     if minimum_gb <= 0:
         return None
     project = next((arg for arg in argv[1:] if not arg.startswith("-")), ".")
