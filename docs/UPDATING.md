@@ -100,3 +100,11 @@ Changes shared instructions (AGENTS.md, docs/WORKFLOW.md, docs/HANDOFF.md, docs/
 ### Beta.15 → beta.16 — creator packs
 
 Adds scripts/pack.py, style-library/creator_packs.py and docs/PACKS.md, plus an editable-recipe line in technique briefs and a recipe check in library validation. No owner data is migrated, rewritten or deleted. Installing a pack is an explicit owner request; it writes the private style-library/packs.json and the pack's folders. Preserve packs.json, references/pack-*/ and the posters/packs and techniques/packs poster folders with other owner data. Older source ignores packs.json; installed pack entries remain ordinary reference entries it can still browse and validate, but it cannot update or remove a pack. Restore compatible source to manage packs again.
+
+### Beta.16 → next — HyperFrames 0.9.71 renderer
+
+Media installations move from HyperFrames 0.9.16 to 0.9.71. Update package.json and package-lock.json together; the lock also moves HyperFrames' hono and @hono/node-server dependencies. GSAP, the Undici 7.30.2 override, both Python locks and the Node >=22.12.0 requirement are unchanged. Follow the existing-installation steps above: updated full setup first checks this installation's running previews, then runs npm ci --ignore-scripts and the pinned CLI's browser ensure, which downloads Chrome headless shell 158 (about 200 MB) once. A --studio-only installation stays studio-only and downloads nothing.
+
+Existing exports, saved compositions and editor working copies are not changed. Before re-rendering an older composition, check for scripts or scene files loaded from outside its folder, including symlinked vendor/ or assets/ folders. Clone them into the folder, or render the creator's own folder with --include-outside-files (docs/TOOLING.md, Files a composition can use). A mix that peaked over -1 dBFS keeps up to about 2 dB more peak level than before; quieter mixes render unchanged. Earlier frame-cache entries are not reused and HyperFrames removes them when idle. Keep HyperFrames history and caches; the update does not need them erased.
+
+Rollback restores both previous package files and the reviewed source, then runs npm ci --ignore-scripts and the old pinned CLI's browser ensure (Chrome headless shell 152) for a media installation. Keep owner records and newer creative work.

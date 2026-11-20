@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+- HyperFrames, the local renderer, moves from 0.9.16 to 0.9.71, with its hono and @hono/node-server dependencies. This clears two moderate npm advisories in the editor's local server. The studio's sample renders pixel-identical. A realistic test edit kept the same frame count, duration and audio-to-picture sync, with only encoding-level differences on fine footage detail.
+- Renders of 4K footage need much less temporary disk, because each video is extracted at about the size it is shown.
+- Scripts such as GSAP and scene files must be inside the composition's folder. Images, video, audio, fonts and CSS can still come from elsewhere. A render that would miss an outside script stops with an error instead of producing a broken video. See docs/TOOLING.md.
+- A mix that goes over -1 dBFS true peak is limited only as far as needed, so its peaks can be up to about 2 dB louder than before. Quieter mixes are unchanged.
+- The HyperFrames editor gets its upstream fixes and features. Its Share and cloud export buttons upload to HeyGen and are not part of the studio's local workflow.
+
+### Upgrading from beta.16
+
+Follow docs/UPDATING.md. A media installation runs full setup once, which downloads the new render browser (about 200 MB). No owner data is rewritten. Before re-rendering an older composition, check that its scripts and scenes are inside its folder.
+
 ## 0.1.0-beta.16 — Install creator packs — 2026-11-19
 
 - Install a creator pack with one chat request. `python3 scripts/pack.py install <file>` checks the pack file (or the folder your browser unzipped), adds its videos, techniques and exact examples to your library under the pack's own IDs, and adds a collection with the pack's name. Your projects, personal collections, notes and approvals stay as they are.
