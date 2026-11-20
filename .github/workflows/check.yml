@@ -69,6 +69,42 @@ jobs:
       - name: Starter export builds
         if: ${{ !cancelled() }}
         run: python scripts/export_release.py --name ci-source-check
+  windows-setup:
+    # Early Windows evidence for a real install: media setup (hash-pinned
+    # Python packages, npm packages and the renderer's browser), then the
+    # synthetic smoke test, which cuts generated footage and renders the
+    # motion sample. Informational only, like the windows job.
+    timeout-minutes: 30
+    runs-on: windows-latest
+    continue-on-error: true
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+      - name: FFmpeg on PATH
+        run: |
+          if ! command -v ffmpeg >/dev/null || ! command -v ffprobe >/dev/null; then
+            choco install ffmpeg -y --no-progress
+          fi
+          ffmpeg -hide_banner -version | head -1
+      - name: Media setup
+        run: python scripts/setup.py
+      - name: Setup check
+        if: ${{ !cancelled() }}
+        run: python scripts/setup.py --check
+      - name: Synthetic smoke test (cut and motion render)
+        if: ${{ !cancelled() }}
+        run: python scripts/smoke.py
+      - name: Smoke report
+        if: ${{ !cancelled() }}
+        run: cat runtime/smoke-report.json
   audits:
     timeout-minutes: 15
     runs-on: ubuntu-latest
