@@ -145,3 +145,6 @@ style-library/creator_packs.py
 style-library/test_creator_packs.py
 scripts/pack.py
 docs/PACKS.md
+style-library/technique_recall.py
+style-library/test_technique_recall.py
+docs/TECHNIQUE-PICKS.md
