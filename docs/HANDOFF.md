@@ -99,8 +99,10 @@ A copied #writing-memory=<UUID>&memory-revision=<sha256> link identifies an acti
 
 ## Finished video techniques
 
-Follow docs/TECHNIQUE-CATALOGING.md for existing-library completion and final-review preparation. Inspect each distinct reusable move in the exact export. Prepare examples project-locally before final approval; promote only the chosen final version, preserving the preferred baseline and historical links. Approval does not invoke AI. Existing approved sources can receive missing techniques without changing their approval or media. Software updates never perform bulk analysis or replace owner data.
+Follow docs/TECHNIQUE-CATALOGING.md for existing-library completion and review preparation. Any delivered version can become the final, and the user usually approves it later in the Studio, so every time you deliver a video version for review (in a staged project or a single request that edits a supplied video), inspect each distinct reusable move in that exact export and prepare its examples project-locally with style-library/technique_upkeep.py prepare. Reuse the previous version's verified examples where the video is unchanged. Approval promotes only the plan for the version the user chooses, preserving the preferred baseline and historical links. Approval does not invoke AI. Existing approved sources can receive missing techniques without changing their approval or media. Software updates never perform bulk analysis or replace owner data.
 
 ## Saved collections
 
 Read docs/COLLECTIONS.md for optional personal collections and installed pack memberships. Preserve the private style-library/collections.json across updates, rollback, catalog registration and source changes. Collections pin exact examples, references, slides or moments; they do not change family identity, source provenance, approvals or editing selections. Never include edit-specific directions when saving a collection. No promotion or purchase flow is enabled.
+
+To install, update or remove a creator pack, follow docs/PACKS.md and its `scripts/pack.py` commands; never copy pack files or edit pack records by hand. Pack records (IDs that start with the pack ID, a `pack` marker) are the pack author's references under its LICENSE.txt. Copy a technique's `recipe` folder into the project before adapting it.

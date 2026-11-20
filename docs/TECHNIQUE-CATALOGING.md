@@ -14,17 +14,17 @@ Approved existing references can be enriched through the same registration comma
 
 ## Own videos: prepare first, publish the chosen final
 
-Do not register every edit draft as a separate library source or technique set. One first full-review reference may be pending; keep an existing preferred source during later experiments. As part of preparing the final review, inspect that exact export and prepare an entry descriptor plus inspected example plan:
+Do not register every edit draft as a separate library source or technique set. One first full-review reference may be pending; keep an existing preferred source during later experiments. Any delivered version can become the final, and the user usually approves it later in the Studio, so prepare techniques every time you deliver a video version for review, not only for the version you expect to be final. This includes a single request that edits a supplied video. Inspect that exact export and prepare an entry descriptor plus inspected example plan:
 
 ```
 python3 style-library/technique_upkeep.py prepare <project-id> <artifact-id> --entry <entry.json> --examples <examples.json> --reviewed
 ```
 
-The plan uses the entry/example format in docs/HANDOFF.md. The descriptor needs the project's stable reference ID, collection mine, exact media path/version, measured duration and genuine poster. New projects also need the complete reference metadata required by final approval and reference_poster_source in the project descriptor. Existing approved examples from older versions retain their IDs; new versions need new example IDs and versioned posters.
+The plan uses the entry/example format in docs/HANDOFF.md. The descriptor needs the project's stable reference ID, collection mine, exact media path/version, measured duration and genuine poster. New projects also need the complete reference metadata required by final approval and reference_poster_source in the project descriptor. Existing approved examples from older versions retain their IDs; new versions need new example IDs and versioned posters. For a later version, compare it with the previous export (for example frame by frame) and carry over that version's verified examples where the video is unchanged, with new IDs and posters; inspect changed spans fresh.
 
 Preparation validates examples, creates genuine posters and saves recoverable plans in `projects/<slug>/technique-plan.json`. It does not publish drafts, approve work or change catalog.json. Plans retain earlier preparations. The UI reports the prepared example count. **Approve & mark final** promotes only the plan matching the approved artifact's version/path/actual hash in the same guarded approval transaction. Earlier source examples remain on their archived source and accessible through saved links; normal browsing uses the current representative. Changed or unrelated plans are never silently applied.
 
-If the user declares the final in chat, reconcile the same explicit approval through the documented project review workflow; do not infer approval from an export. Catalog prepared techniques for that chosen version, preserving the approval's exact files. If cataloging was missed, approval still records the decision and catch-up offers that finished version afterward. A user may also explicitly choose an unapproved exported video for analysis; that does not approve it or replace an existing preferred baseline without their decision.
+If the user declares the final in chat, reconcile the same explicit approval through the documented project review workflow; do not infer approval from an export. Catalog prepared techniques for that chosen version, preserving the approval's exact files. If cataloging was missed, approval still records the decision and catch-up offers that finished version afterward. The project's review panel then shows Find its techniques, which opens the catch-up request for that video. A user may also explicitly choose an unapproved exported video for analysis; that does not approve it or replace an existing preferred baseline without their decision.
 
 ## Updating existing studios
 

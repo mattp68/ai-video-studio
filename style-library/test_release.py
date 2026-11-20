@@ -53,7 +53,7 @@ class ReleaseTests(unittest.TestCase):
         self.assertEqual([n for n,_ in export.sources()],['README.md'])
     def test_private_registry_media_and_credentials_are_rejected(self):
         legacy=self.root/'style-library/references/demo/intake.md';legacy.parent.mkdir(parents=True);legacy.write_text('Private reference notes')
-        for name in ['style-library/dist/assets/reference-previews/cover.svg','style-library/reference-notes.json','style-library/writing-voice.json','style-library/collections.json','style-library/catalog.json','projects/demo/STATUS.md','references/demo/source.mp4','style-library/references/demo/intake.md','.env','secret.key','../outside.md']:
+        for name in ['style-library/dist/assets/reference-previews/cover.svg','style-library/reference-notes.json','style-library/writing-voice.json','style-library/collections.json','style-library/packs.json','style-library/catalog.json','projects/demo/STATUS.md','references/demo/source.mp4','style-library/references/demo/intake.md','.env','secret.key','../outside.md']:
             self.select(name+'\n')
             with self.subTest(name=name),self.assertRaises(ValueError):export.sources()
     def test_symlinks_and_duplicate_paths_are_rejected(self):

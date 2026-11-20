@@ -74,6 +74,7 @@ window.TechniqueCatalog=(()=>{
  $('#close-technique-upkeep').onclick=()=>dialog.close();
  dialog.addEventListener('close',()=>run++);dialog.addEventListener('change',()=>{updateCount();$('#technique-upkeep-preview').hidden=true;$('#technique-upkeep-status').textContent='';});
  $('#copy-technique-request').onclick=copyRequest;
+ window.TechniqueUpkeep={open};
  $('#dismiss-technique-upkeep').onclick=()=>{
   let dismissed={};try{dismissed=JSON.parse(localStorage.getItem(dismissKey)||'{}');}catch{}
   try{localStorage.setItem(dismissKey,JSON.stringify({...dismissed,...Object.fromEntries(items.map(i=>[i.id,i.revision]))}));}catch{}

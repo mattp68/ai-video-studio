@@ -132,6 +132,15 @@ class TechniqueUpkeepTests(unittest.TestCase):
         self.approve();data=json.loads(self.catalog.read_text())
         self.assertFalse(data['techniques']);self.assertEqual(len(upkeep.discover()['items']),1)
 
+    def test_review_panel_reports_library_techniques_for_the_approved_file(self):
+        self.approve();index._CATALOG_COUNTS=(None,{})
+        state=index.review_options(self.p)['techniques']
+        self.assertFalse(state['prepared']);self.assertEqual(state['cataloged'],0)
+        data=json.loads(self.catalog.read_text())
+        data['techniques']=[{'id':'tech-demo','examples':[{'id':'demo-x','source_path':'projects/demo/review.mp4'},{'id':'demo-y','source_path':'projects/demo/old.mp4'}]}]
+        self.catalog.write_text(json.dumps(data));index._CATALOG_COUNTS=(None,{})
+        self.assertEqual(index.review_options(self.p)['techniques']['cataloged'],1)
+
     def test_completed_zero_technique_source_is_not_repeated(self):
         self.entry['source_sha256']=self.entry['technique_review_sha256']=upkeep.digest(self.project/'old.mp4');self.save()
         self.assertEqual(upkeep.discover()['items'],[])

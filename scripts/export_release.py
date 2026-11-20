@@ -15,7 +15,7 @@ def sources():
     for name in (ROOT/'release-files.txt').read_text().splitlines():
         if not name or name.startswith('#'):continue
         p=Path(name)
-        if (p.is_absolute() or '..' in p.parts or any(part.startswith('.env') for part in p.parts) or p.suffix in {'.pem','.key','.p12','.pfx'} or name.startswith('style-library/dist/assets/reference-previews/') or name in {'style-library/catalog.json','style-library/projects.json','style-library/settings.json','style-library/reference-notes.json','style-library/writing-voice.json','style-library/collections.json'} or
+        if (p.is_absolute() or '..' in p.parts or any(part.startswith('.env') for part in p.parts) or p.suffix in {'.pem','.key','.p12','.pfx'} or name.startswith('style-library/dist/assets/reference-previews/') or name in {'style-library/catalog.json','style-library/projects.json','style-library/settings.json','style-library/reference-notes.json','style-library/writing-voice.json','style-library/collections.json','style-library/packs.json'} or
             (p.parts[0] in PRIVATE and name not in {'projects/README.md','references/README.md'}) or
             (len(p.parts)>1 and p.parts[:2] in {('style-library','runtime'),('style-library','references')})):raise ValueError('Private or unsafe release path: '+name)
         root=ROOT.resolve()

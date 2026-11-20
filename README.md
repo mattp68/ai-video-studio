@@ -98,6 +98,7 @@ For deeper technical details:
 - [Editing workflow](docs/WORKFLOW.md)
 - [Capabilities and optional tools](docs/CAPABILITIES.md)
 - [Updates and upgrades](docs/UPDATING.md)
+- [Creator packs](docs/PACKS.md)
 - [Security and privacy](SECURITY.md)
 
 Your studio runs locally on your computer. Your personal projects and references are not included in the public repository.

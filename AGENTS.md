@@ -19,7 +19,8 @@ For software changes or publication, read docs/RELEASE.md; for an installed stud
 
 ## Files and tools
 
-- Source files in projects/<slug>/raw are immutable. Copy imports. Keep proxies, source-to-output maps, selects, captions, rights/source ledgers, code and versioned exports. Never overwrite a deliverable silently.
+- Source files in projects/<slug>/raw are immutable. Import with python3 scripts/studio.py ingest, which clones instead of duplicating where the disk supports it. Keep proxies, source-to-output maps, selects, captions, rights/source ledgers, code and versioned exports. Never overwrite a deliverable silently.
+- Start each new version folder with python3 scripts/studio.py new-version projects/<slug>/<current-version>. It clones unchanged files instead of duplicating them and leaves out regenerable caches; do not copy version folders by hand. Put regenerable frame dumps, mattes and temporary renders in that version's .scratch/ folder, never in work/ or assets/, and never reference .scratch from a composition. See docs/TOOLING.md for disk use.
 - Use python3 scripts/studio.py new <slug> to scaffold and register an intake project. Use that project's .venv Python for Pillow/media helpers. The site itself only needs Python's standard library.
 - Use the project-local pinned HyperFrames CLI through scripts/hf.py. Read its official docs and installed capabilities before changing production architecture. Each composition has a finite duration, one paused seekable timeline and local production assets.
 - Do not assume private globally installed skills/plugins, paid libraries or accounts. Shared docs and the sample are sufficient for the baseline. Optional capabilities need the user's own account/rights. Do not weaken approval/security settings or install global integrations as part of setup.
@@ -122,8 +123,14 @@ style-library/writing-voice.json and projects/<slug>/script-brief.json are priva
 
 ## Finished video techniques
 
-Follow docs/TECHNIQUE-CATALOGING.md for existing-library completion and final-review preparation. Inspect each distinct reusable move in the exact export. Prepare examples project-locally before final approval; promote only the chosen final version, preserving the preferred baseline and historical links. Approval does not invoke AI. Existing approved sources can receive missing techniques without changing their approval or media. Software updates never perform bulk analysis or replace owner data.
+Follow docs/TECHNIQUE-CATALOGING.md for existing-library completion and review preparation. Any delivered version can become the final, and the user usually approves it later in the Studio, so every time you deliver a video version for review (in a staged project or a single request that edits a supplied video), inspect each distinct reusable move in that exact export and prepare its examples project-locally with style-library/technique_upkeep.py prepare. Reuse the previous version's verified examples where the video is unchanged. Approval promotes only the plan for the version the user chooses, preserving the preferred baseline and historical links. Approval does not invoke AI. Existing approved sources can receive missing techniques without changing their approval or media. Software updates never perform bulk analysis or replace owner data.
 
 ## Saved collections
 
 Read docs/COLLECTIONS.md for optional personal collections and installed pack memberships. Preserve the private style-library/collections.json across updates, rollback, catalog registration and source changes. Collections pin exact examples, references, slides or moments; they do not change family identity, source provenance, approvals or editing selections. Never include edit-specific directions when saving a collection. No promotion or purchase flow is enabled.
+
+## Creator packs
+
+When the owner asks to install a creator pack (for example "install my Creator Pack"), follow docs/PACKS.md: run `python3 scripts/pack.py verify <file>`, tell them the pack, version, size and license summary, then `python3 scripts/pack.py install <file>` and report the result. The file can be the downloaded .zip or a folder the browser unzipped. Never unzip, copy or edit pack files or catalog records by hand, and do not work around a refusal; explain it. A newer version installs the same way. Uninstall only on request with `python3 scripts/pack.py remove <pack-id>` after a `--dry-run`. Ask before `--replace-local-edits` or `--allow-downgrade`.
+
+Installed pack records carry a `pack` marker and IDs that start with the pack ID. Treat them as the pack author's creative references under the pack's LICENSE.txt in references/pack-<pack-id>/, not the owner's work: never edit them in place, and copy a technique's `recipe` folder into the project before adapting it. Recreate a pack technique with the owner's own footage; do not put a pack's videos, clips, posters, voice or likeness into the owner's exports unless that LICENSE.txt allows it. Preserve style-library/packs.json with other owner records. Pack authors build packs from their own collection with `python3 scripts/pack.py build`; only their own media goes in a pack.

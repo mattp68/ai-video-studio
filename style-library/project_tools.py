@@ -9,6 +9,7 @@ import socket
 import subprocess
 import threading
 import uuid
+import disk
 import project_index as index
 import review_actions as storage
 
@@ -54,7 +55,7 @@ def inventory(folder):
     for current,dirs,files in os.walk(folder,followlinks=True):
         here=Path(current);resolved=here.resolve()
         if not resolved.is_relative_to(index.STUDIO.resolve()) or resolved in seen:raise ToolsError('The editable source contains an unsafe or cyclic link.',503)
-        seen.add(resolved);dirs[:]=[d for d in dirs if d not in {'.git','.venv','node_modules','__pycache__','.hyperframes','studio-editor'}]
+        seen.add(resolved);dirs[:]=[d for d in dirs if d not in {'.git','.venv','node_modules','__pycache__','.hyperframes','studio-editor',disk.SCRATCH}]
         for name in sorted(files):
             path=here/name;target=path.resolve()
             if not target.is_relative_to(index.STUDIO.resolve()) or not target.is_file():raise ToolsError('The editable source contains an unavailable linked file.',503)
@@ -135,7 +136,8 @@ def open_editor(body):
                 parent.mkdir(parents=True,exist_ok=True)
                 copy=parent/(a['id']+'-'+uuid.uuid4().hex[:8]);copy.mkdir()
                 try:
-                    shutil.copytree(folder,copy,dirs_exist_ok=True,symlinks=False,ignore=shutil.ignore_patterns('.git','.venv','node_modules','__pycache__','.hyperframes','studio-editor'))
+                    # Clone where the disk allows; leave out regenerable scratch files and HyperFrames caches.
+                    disk.copy_tree(folder,copy,skip=(disk.SCRATCH,)+disk.REGENERATED+disk.NEVER_COPIED,symlinks=False,dirs_exist_ok=True)
                     if inventory(folder)[0]!=revision:raise ToolsError('The source changed while copying. Refresh and try again.',409)
                 except Exception:
                     shutil.rmtree(copy);raise

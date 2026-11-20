@@ -63,6 +63,17 @@ class ProjectToolsTests(unittest.TestCase):
         with patch.object(tools.subprocess,'run',side_effect=self.fake_launch):tools.open_editor(self.body())
         self.assertFalse((self.copy/'work/studio-editor').exists())
 
+    def test_working_copy_leaves_out_scratch_frames_and_regenerable_caches(self):
+        before=self.body()['revision']
+        for folder in ['.scratch','.thumbnails','.transcode-cache']:(self.source/folder).mkdir();(self.source/folder/'f-0001.png').write_bytes(b'frame')
+        (self.source/'assets').mkdir();(self.source/'assets/plate.mp4').write_bytes(b'plate')
+        self.assertNotEqual(self.body()['revision'],before)
+        (self.source/'.scratch/f-0002.png').write_bytes(b'more frames');revision=self.body()['revision']
+        (self.source/'.scratch/f-0003.png').write_bytes(b'regenerable');self.assertEqual(self.body()['revision'],revision)
+        with patch.object(tools.subprocess,'run',side_effect=self.fake_launch):tools.open_editor(self.body())
+        self.assertEqual((self.copy/'assets/plate.mp4').read_bytes(),b'plate');self.assertIn('data-composition-id',(self.copy/'index.html').read_text())
+        for folder in ['.scratch','.thumbnails','.transcode-cache']:self.assertFalse((self.copy/folder).exists(),folder)
+
     def test_reopening_keeps_manual_changes_in_the_same_working_copy(self):
         body=self.body()
         with patch.object(tools.subprocess,'run',side_effect=self.fake_launch):first=tools.open_editor(body)

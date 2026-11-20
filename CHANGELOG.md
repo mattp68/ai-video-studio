@@ -1,5 +1,35 @@
 # Changelog
 
+## 0.1.0-beta.16 — Install creator packs — 2026-11-19
+
+- Install a creator pack with one chat request. `python3 scripts/pack.py install <file>` checks the pack file (or the folder your browser unzipped), adds its videos, techniques and exact examples to your library under the pack's own IDs, and adds a collection with the pack's name. Your projects, personal collections, notes and approvals stay as they are.
+- Install a newer version the same way: unchanged items keep their links, and anything the new version drops is cleaned up. `python3 scripts/pack.py remove <pack-id>` uninstalls a pack; installing the file again restores it.
+- Pack authors can build a deterministic pack file from one of their own collections with `python3 scripts/pack.py build`. It refuses other creators' videos and warns about music and unverified licensing. See docs/PACKS.md.
+
+### Upgrading from beta.15
+
+Follow docs/UPDATING.md in your existing installation. Apply the reviewed source while preserving saved work, settings and local customizations. No owner-data rewrite, deletion, empty-seed replacement or renderer upgrade is needed. Nothing is installed until you ask your editing chat to install a pack file; see docs/PACKS.md.
+
+## 0.1.0-beta.15 — Techniques for whichever version you approve — 2026-11-19
+
+- Techniques are no longer missed when you approve a video in the Studio. Your editing chat now prepares techniques for every version it delivers for review, not only the one it expects to be final, in step-by-step projects and in single requests that edit a supplied video. Later versions reuse examples where the video is unchanged.
+- The approval panel says plainly when no techniques are prepared for a version. A finished video with no techniques in your library shows **Find its techniques**, which opens the catch-up request for that video.
+
+### Upgrading from beta.14
+
+Follow docs/UPDATING.md in your existing installation. Apply the reviewed source while preserving saved work, settings and local customizations. No owner-data rewrite, deletion, empty-seed replacement or renderer upgrade is needed. Finished videos that already have no techniques show Find its techniques after the update; nothing is analyzed automatically.
+
+## 0.1.0-beta.14 — Use far less disk space for imports and versions — 2026-11-19
+
+- Use much less disk space on Macs and Linux disks that support copy-on-write clones. Imports, new version folders and Open in HyperFrames working copies now clone files instead of duplicating them; other disks keep making ordinary copies.
+- Start the next version with `python3 scripts/studio.py new-version projects/<slug>/<version>`. It leaves out regenerable caches and reports how much was shared.
+- Keep regenerable frame dumps, mattes and temporary renders in a version's `.scratch/` folder, which HyperFrames history, new versions and editor copies skip.
+- `scripts/hf.py render` warns when less than 10 GB is free. docs/TOOLING.md explains disk use and HyperFrames' own `clean --dry-run`.
+
+### Upgrading from beta.13
+
+Follow docs/UPDATING.md in your existing installation. Apply the reviewed source while preserving saved work, settings and local customizations. No owner-data rewrite, deletion, empty-seed replacement or renderer upgrade is needed. Existing project folders are left as they are; the savings apply to imports, versions and editor copies made after updating.
+
 ## 0.1.0-beta.13 — Collections and a cleaner Reference Library — 2026-11-08
 
 - Save exact technique examples, references, slides and moments in collections, independently of your current edit picks and notes. Installed packs show their exact examples; this release includes no paid pack, storefront or promotion.

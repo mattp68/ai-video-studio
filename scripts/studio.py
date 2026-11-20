@@ -16,6 +16,8 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
 CONFIG = json.loads((ROOT / "studio.config.json").read_text())
+sys.path.insert(0, str(ROOT / "style-library"))
+import disk  # noqa: E402
 
 
 def run(args, capture=False):
@@ -115,12 +117,54 @@ def ingest(args):
             digest.update(block)
     target = fresh(project / "raw" / source.name)
     metadata = probe(source)
-    shutil.copy2(source, target)
+    # The original stays where it was. A clone shares its data, so the import uses
+    # almost no extra space on disks that support it (APFS, Btrfs, XFS).
+    how = disk.copy_file(source, target)
     manifest = json.loads(manifest_path.read_text())
     manifest["sources"].append({"file": str(target.relative_to(project)),
                                 "sha256": digest.hexdigest(), "bytes": target.stat().st_size,
                                 "probe": metadata})
     write_json(manifest_path, manifest)
+    if how == "clone":
+        print("Imported as a clone: no extra disk space until either file changes.", file=sys.stderr)
+    else:
+        print(f"Imported as a full copy ({disk.size_label(target.stat().st_size)}); this disk cannot clone files.",
+              file=sys.stderr)
+    print(target)
+
+
+def next_version_name(name):
+    match = re.fullmatch(r"(.+-v)(\d+)", name)
+    if not match:
+        raise ValueError("Name version folders like assembly-v01 so the next one can be numbered, or pass --name")
+    digits = match.group(2)
+    return f"{match.group(1)}{int(digits) + 1:0{len(digits)}d}"
+
+
+def new_version(args):
+    projects = (ROOT / "projects").resolve()
+    source = args.source.resolve(strict=True)
+    if not source.is_dir() or not source.is_relative_to(projects) or len(source.relative_to(projects).parts) < 2:
+        raise ValueError("Choose a version folder inside a project, such as projects/<slug>/assembly-v01")
+    if args.source.is_symlink():
+        raise ValueError("Choose the version folder itself, not a link to it")
+    name = args.name or next_version_name(source.name)
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", name):
+        raise ValueError("Use a version name such as assembly-v02")
+    target = source.parent / name
+    if target.exists():
+        raise ValueError(f"{target.relative_to(ROOT)} already exists. Choose a new version name.")
+    summary = disk.copy_tree(source, target, skip=(disk.SCRATCH,) + disk.REGENERATED + disk.NEVER_COPIED,
+                             symlinks=True)
+    lines = [f"Created {target.relative_to(ROOT)} from {source.name}."]
+    if summary["cloned"]:
+        lines.append(f"{summary['cloned']} files cloned ({disk.size_label(summary['cloned_bytes'])} shared with "
+                     f"{source.name}; no extra space until a file changes).")
+    if summary["copied"]:
+        lines.append(f"{summary['copied']} files copied ({disk.size_label(summary['copied_bytes'])}).")
+    if summary["skipped"]:
+        lines.append("Left out regenerable folders: " + ", ".join(summary["skipped"]) + ".")
+    print(" ".join(lines), file=sys.stderr)
     print(target)
 
 
@@ -284,6 +328,8 @@ def main():
     sub.add_parser("doctor").set_defaults(func=doctor)
     p = sub.add_parser("new"); p.add_argument("slug"); p.set_defaults(func=new_project)
     p = sub.add_parser("ingest"); p.add_argument("project", type=Path); p.add_argument("source", type=Path); p.set_defaults(func=ingest)
+    p = sub.add_parser("new-version", help="Start the next version folder by cloning the current one")
+    p.add_argument("source", type=Path); p.add_argument("--name"); p.set_defaults(func=new_version)
     p = sub.add_parser("prepare"); p.add_argument("project", type=Path); p.add_argument("source", type=Path)
     p.add_argument("--start", default="0"); p.add_argument("--end"); p.add_argument("--interval", type=float, default=5)
     p.add_argument("--max-frames", type=int, default=120); p.set_defaults(func=prepare)

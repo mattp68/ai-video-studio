@@ -102,6 +102,8 @@ def reference_brief(ids):
                     'This is creative direction, not an installed preset or permission to reuse the source media.']
             if e.get('source_url'): out += [f"Original: {e['source_url']}"]
             if e.get('composition'): out += [f"Editable source project: {e['composition']}"]
+            if t.get('recipe'): out += [f"Editable recipe: {t['recipe']} (copy it into your project before changing it)"]
+            if t.get('pack'): out += [f"From the installed pack {t['pack']['name']}; read references/pack-{t['pack']['id']}/LICENSE.txt before reusing its media."]
             out += ['Keep: '+' '.join(t['keep']), 'Avoid: '+' '.join(t['avoid']),
                     'Other examples in this family: '+'; '.join(v['label'] for v in t['examples'] if v['id']!=x['id']),
                     'Read before editing: '+', '.join(e['notes']),
@@ -277,6 +279,9 @@ def validate():
             assert (BASE/'dist'/x['poster']).is_file(), x['poster']
             brief=reference_brief([t['id']+'@'+x['id']])
             assert e['media_path'] in brief and timestamp(x['start']) in brief and x['id'] in brief
+        if t.get('recipe'):
+            folder = (STUDIO/t['recipe']).resolve()
+            assert folder.is_relative_to(STUDIO) and folder.is_dir(), t['recipe']
         used += any(by_id[x['style_id']]['collection']=='mine' for x in t['examples'])
         technique_examples += len(examples)
     return {'entries':len(entries),'my_videos':sum(e['collection']=='mine' and e.get('asset_type')!='carousel' for e in entries),'carousels':sum(e.get('asset_type')=='carousel' for e in entries),'other_creators':sum(e['collection']=='reference'for e in entries),'playable_local_examples':media,'distinct_creators':len(creators),'unique_sources':len(sources),'techniques':len(techniques),'technique_examples':technique_examples,'techniques_used_in_our_videos':used}

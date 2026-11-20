@@ -114,6 +114,29 @@ def revision(project):
     return hashlib.sha256('\n'.join(parts).encode()).hexdigest()
 
 
+_CATALOG_COUNTS = (None, {})
+
+
+def cataloged_examples(source_path):
+    """Technique examples in the library whose source is this exact project file."""
+    global _CATALOG_COUNTS
+    path = REGISTRY.with_name('catalog.json')
+    try:
+        stamp = path.stat().st_mtime_ns
+    except OSError:
+        return 0
+    if _CATALOG_COUNTS[0] != stamp:
+        counts = {}
+        try:
+            for family in json.loads(path.read_text()).get('techniques', []):
+                for example in family.get('examples', []):
+                    counts[example.get('source_path')] = counts.get(example.get('source_path'), 0) + 1
+        except (OSError, ValueError, AttributeError, TypeError):
+            counts = {}
+        _CATALOG_COUNTS = (stamp, counts)
+    return _CATALOG_COUNTS[1].get(source_path, 0)
+
+
 def review_options(project):
     artifact = next(a for a in project['artifacts'] if a['id'] == project['primary_artifact'])
     kind = artifact.get('approval_kind') or ('spoken_cut' if artifact.get('role') == 'assembly' else
@@ -134,6 +157,7 @@ def review_options(project):
             technique_state = {'prepared': plan is not None, 'count': len(plan['examples']) if plan else 0}
         except (OSError, ValueError, KeyError):
             technique_state = {'prepared': False, 'count': 0}
+        technique_state['cataloged'] = cataloged_examples(f"projects/{project['id']}/{artifact.get('path', '')}")
     return {'action': action, 'kind': kind, 'label': label, 'artifact_id': artifact['id'], 'techniques': technique_state,
             'version': artifact.get('version', ''), 'checkpoint': artifact.get('label', 'Review'),
             'revision': revision(project), 'decided_at': previous.get('at'),

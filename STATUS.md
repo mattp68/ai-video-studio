@@ -1,13 +1,11 @@
-# AI Video Studio — 0.1.0-beta.13
+# AI Video Studio — 0.1.0-beta.16
 
-The Reference Library opens with a compact heading, optional help and shared searchable filters. Save exact references, techniques, slides and moments in personal collections, and browse installed packs without expanding their exact membership. Creator, Category, Techniques and Collections support multiple choices. Browse filters and collections are separate from the current editing selection and its direction. See docs/COLLECTIONS.md.
+Creator packs can be installed into an existing or new studio. A pack is one versioned file holding a creator's own videos, technique families with exact examples, posters, optional editable recipes and its own license. Ask your editing chat to install it (python3 scripts/pack.py install); the pack's techniques then appear in the Reference Library, each as its own card, under a collection in Collections → Creator packs. Installing never changes your projects, personal collections, notes or approvals, and packs can be updated or removed. Pack authors build packs from a personal collection with python3 scripts/pack.py build. See docs/PACKS.md.
 
-Find remaining techniques prepares a chat request for older saved videos and eligible finished projects. Final approval promotes only examples prepared for that exact reviewed version. Existing saved techniques and historical links remain. There is no automatic analysis or owner-data migration. See docs/TECHNIQUE-CATALOGING.md and docs/UPDATING.md.
+There is no owner-data migration and nothing is deleted. The numbered GitHub release is authoritative for publication state. Dependency pins and renderer code are unchanged.
 
-The numbered GitHub release is authoritative for publication state. Dependency pins and renderer code are unchanged.
+## Previous release — 0.1.0-beta.15
 
-## Previous release — 0.1.0-beta.12
+Techniques are no longer missed when a video is approved in the Studio. The editing chat prepares technique examples for every version it delivers for review, in step-by-step projects and in single requests that edit a supplied video, and reuses unchanged examples on later versions. Approval still publishes only the plan for the exact version chosen. The approval panel says plainly when nothing is prepared, and a finished video with no techniques in the library offers Find its techniques for that video. See docs/TECHNIQUE-CATALOGING.md.
 
-Add reference takes a public link. The editing chat saves verified technique excerpts with the source analysis. The reference pane plays each excerpt and returns to your position in the full video. Collect exact examples, timestamped moments, whole references and carousel slides across Videos, Techniques and Carousels for one chat request. The reference title shows the creator and original source link. Analysis limits stay in the reference details. Unavailable videos show how to supply a local copy in chat.
-
-Direction belongs to the current editing request and can be edited in either the reference or Selection. Clear starts a fresh request with Undo, preserving earlier saved records. Updates preserve existing project and library records. Browser selections from earlier versions carry forward with their previously chosen example or slide. The renderer and dependency pins are unchanged. See docs/UPDATING.md and docs/VALIDATION.md.
+There is no owner-data migration and nothing is deleted. The numbered GitHub release is authoritative for publication state. Dependency pins and renderer code are unchanged.

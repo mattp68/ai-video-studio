@@ -61,6 +61,8 @@ style-library/start.py
 style-library/project_index.py
 style-library/review_actions.py
 style-library/prepare_assets.py
+style-library/disk.py
+style-library/test_disk.py
 style-library/security.py
 style-library/test_context.py
 style-library/test_projects.py
@@ -142,3 +144,7 @@ docs/COLLECTIONS.md
 style-library/dist/filter-model.js
 style-library/dist/library-filter-ui.js
 style-library/test_library_filters.js
+style-library/creator_packs.py
+style-library/test_creator_packs.py
+scripts/pack.py
+docs/PACKS.md

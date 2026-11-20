@@ -22,9 +22,9 @@ Membership is exact. A collection containing one example in a four-example famil
 
 An installed pack is another collection with curated exact memberships. Owners can browse it, save its examples into personal collections, or hide/restore it. Personal collections and edit-specific notes remain separate. Pack membership never changes a source's creator, source collection, approval, or Used in my work status.
 
-This version has no storefront, teaser, purchase link, account gate, billing or media downloader. Only installed packs appear in the selector. A future installer can register membership after it has safely installed the licensed library records and media.
+The studio has no storefront, teaser, purchase link, account gate, billing or media downloader. Only installed packs appear in the selector. `python3 scripts/pack.py install <file>` installs a pack file the owner already has: it verifies it, installs its library records and media, and creates or updates its collection with exactly that version's items. An update keeps the owner's hidden marker. See docs/PACKS.md.
 
-For an already installed pack, run `python3 style-library/saved_collections.py import <manifest.json>`. The manifest has only pack_id, version, name and members. Members use the exact identities below; registration resolves and pins their current source snapshots. It does not import media or catalog entries. Repeated versions are idempotent. A newer version adds distinct memberships while retaining earlier ones, histories and an owner's removed marker. This is a membership integration seam, not a complete pack distribution system.
+`python3 style-library/saved_collections.py import <manifest.json>` remains a lower-level membership seam for records that are already in the catalog. Its manifest has only pack_id, version, name and members; it does not import media or catalog entries, and a newer version adds memberships while retaining earlier ones. Use the pack installer for pack files.
 
 ## Owner records and guards
 
