@@ -35,6 +35,6 @@ Add reference saves a link and note, then tries to save its public cover image w
 5. Ask before paid services or system-wide changes. Do not weaken security settings to make setup pass.
 6. Report what was actually checked. An unavailable optional tool does not stop the core studio from opening.
 
-The full media workflow has been verified on Apple Silicon macOS on the maintainer’s machine. Windows, Intel Mac, Linux and fresh Codex/Claude sessions are pilot coverage. See [PILOT.md](PILOT.md). The website itself uses Python’s standard library; that is separate from a claim of complete media compatibility on every platform.
+The full media workflow has been verified on Apple Silicon macOS on the maintainer’s machine. Windows has early support: setup, the smoke test's edit and render, and the automated suites pass in CI on Windows, but not yet on a real Windows PC. Intel Mac, Linux and fresh Codex/Claude sessions are pilot coverage. See [PILOT.md](PILOT.md). The website itself uses Python’s standard library; that is separate from a claim of complete media compatibility on every platform.
 
 Saved studio feedback is local data in projects/<slug>/review-feedback.json. Either assistant can read it when you ask to apply your notes. No direct chat integration, extra AI key or background agent is required. The website captures a version and a video time or storyboard scene; it does not start the edit.

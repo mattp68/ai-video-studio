@@ -1,16 +1,18 @@
 # Changelog
 
-## Unreleased
+## 0.1.0-beta.17 — HyperFrames 0.9.71 and Windows early support — 2026-11-20
 
 - HyperFrames, the local renderer, moves from 0.9.16 to 0.9.71, with its hono and @hono/node-server dependencies. This clears two moderate npm advisories in the editor's local server. The studio's sample renders pixel-identical. A realistic test edit kept the same frame count, duration and audio-to-picture sync, with only encoding-level differences on fine footage detail.
 - Renders of 4K footage need much less temporary disk, because each video is extracted at about the size it is shown.
 - Scripts such as GSAP and scene files must be inside the composition's folder. Images, video, audio, fonts and CSS can still come from elsewhere. A render that would miss an outside script stops with an error instead of producing a broken video. See docs/TOOLING.md.
 - A mix that goes over -1 dBFS true peak is limited only as far as needed, so its peaks can be up to about 2 dB louder than before. Quieter mixes are unchanged.
 - The HyperFrames editor gets its upstream fixes and features. Its Share and cloud export buttons upload to HeyGen and are not part of the studio's local workflow.
+- Windows early support. Library paths are always saved with forward slashes, so final approval, adding videos to the library and technique upkeep work on Windows (fixes #30; contributed by IbexDataIsrael in #37). Every studio text file is read and written as UTF-8 on every platform, including creator pack install and removal, and setup now completes on Windows.
+- CI now runs the Python and UI suites, media setup and the smoke test's edit and render on Windows. These jobs are informational and don't block releases. The studio hasn't yet been used on a real Windows PC, and on-device transcription stays Apple Silicon only. Nothing changes on macOS or Linux.
 
 ### Upgrading from beta.16
 
-Follow docs/UPDATING.md. A media installation runs full setup once, which downloads the new render browser (about 200 MB). No owner data is rewritten. Before re-rendering an older composition, check that its scripts and scenes are inside its folder.
+Follow docs/UPDATING.md. A media installation runs full setup once, which downloads the new render browser (about 200 MB). No owner data is rewritten. Before re-rendering an older composition, check that its scripts and scenes are inside its folder. On Windows, rerun full setup and validate the library if an earlier attempt stopped partway through.
 
 ## 0.1.0-beta.16 — Install creator packs — 2026-11-19
 
