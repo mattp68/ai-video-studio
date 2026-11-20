@@ -42,7 +42,7 @@ def read(project):
         return path, {'schema_version': 1, 'project_id': project['id'], 'notes': []}
     if path.stat().st_size > 4_000_000:
         raise FeedbackError('The feedback file needs attention before adding more notes.', 503)
-    data = json.loads(path.read_text())
+    data = json.loads(path.read_text(encoding='utf-8'))
     if (not isinstance(data, dict) or data.get('project_id') != project['id'] or
             data.get('schema_version') != 1 or not isinstance(data.get('notes'), list)):
         raise FeedbackError('The saved feedback needs repair. Existing notes were preserved.', 503)
@@ -55,7 +55,7 @@ def read_links(project):
         return path, {'schema_version': 1, 'project_id': project['id'], 'links': {}}
     if path.stat().st_size > 4_000_000:
         raise FeedbackError('The feedback links file needs attention. Your notes are preserved.', 503)
-    data = json.loads(path.read_text())
+    data = json.loads(path.read_text(encoding='utf-8'))
     if (not isinstance(data, dict) or data.get('schema_version') != 1 or
             data.get('project_id') != project['id'] or not isinstance(data.get('links'), dict)):
         raise FeedbackError('Saved feedback links need repair. Your notes are preserved.', 503)
@@ -121,7 +121,7 @@ def current(project_id, selection_id=None):
 def check_writes():
     storage.check_storage()
     for journal in storage.JOURNALS.glob('*/transaction.json'):
-        if json.loads(journal.read_text()).get('state') == 'prepared':
+        if json.loads(journal.read_text(encoding='utf-8')).get('state') == 'prepared':
             raise FeedbackError('A previous save needs recovery before saving feedback.', 503)
 
 

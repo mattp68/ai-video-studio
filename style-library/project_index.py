@@ -26,7 +26,7 @@ def registry():
     # An empty installation has no projects until its assistant registers one.
     if not REGISTRY.exists():
         return {'schema_version': 1, 'projects': []}
-    data = json.loads(REGISTRY.read_text())
+    data = json.loads(REGISTRY.read_text(encoding='utf-8'))
     if not isinstance(data, dict) or not isinstance(data.get('projects'), list):
         raise ValueError('Invalid project navigation index')
     return data

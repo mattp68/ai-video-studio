@@ -29,7 +29,7 @@ def register(kind, manifest, replace=False, techniques=None):
     with index.STATE_LOCK:
         storage.check_storage()
         for journal in storage.JOURNALS.glob('*/transaction.json'):
-            if json.loads(journal.read_text()).get('state') == 'prepared':
+            if json.loads(journal.read_text(encoding='utf-8')).get('state') == 'prepared':
                 raise ValueError('An earlier save needs recovery before registering work.')
         return register_locked(kind, manifest, replace, techniques)
 
@@ -43,7 +43,7 @@ def register_locked(kind, manifest, replace, techniques=None):
         raise ValueError('Technique examples need a video reference.')
     projects = json.loads(snapshots[index.REGISTRY.resolve()]) if snapshots[index.REGISTRY.resolve()] is not None else {'schema_version': 1, 'projects': []}
     catalog = json.loads(snapshots[storage.CATALOG.resolve()]) if snapshots[storage.CATALOG.resolve()] is not None else {'schema_version': 4, 'entries': [], 'techniques': []}
-    item=json.loads(Path(manifest).read_text())
+    item=json.loads(Path(manifest).read_text(encoding='utf-8'))
     if not re.fullmatch(r'[a-z0-9]+(?:-[a-z0-9]+)*',item['id']):raise ValueError('Use a readable lowercase ID')
     if kind=='project':
         required={'title','format','summary','next_step','state','stage','primary_artifact','artifacts','source_notes'}
@@ -110,7 +110,7 @@ def register_locked(kind, manifest, replace, techniques=None):
             if kind != 'reference' or techniques is None or not saved.get('approval') or any(item.get(k) != saved.get(k) for k in ['version', 'media_path']):
                 raise ValueError('This record has saved approvals. Reconcile those explicitly before replacing its descriptor.')
             source_hash = index.digest(registered_file(ROOT, saved['media_path'], MEDIA))
-            approved = any(str(Path('projects') / saved.get('project_id', '') / f['path']) == saved['media_path'] and f['sha256'] == source_hash for f in saved['approval'].get('files', []))
+            approved = any(library.catalog_path('projects', saved.get('project_id', ''), f['path']) == saved['media_path'] and f['sha256'] == source_hash for f in saved['approval'].get('files', []))
             if not approved:
                 raise ValueError('The approved video changed. Preserve its approval and recheck the source.')
             for field in ['approval', 'review_status', 'delivery_status', 'project_id']:
@@ -122,7 +122,7 @@ def register_locked(kind, manifest, replace, techniques=None):
     changes = {}
     if kind == 'reference':
         if techniques is not None:
-            plan = json.loads(Path(techniques).read_text())
+            plan = json.loads(Path(techniques).read_text(encoding='utf-8'))
             evidence_path = storage.BASE / 'runtime/source-evidence.json'
             if evidence_path.resolve() != evidence_path.absolute():
                 raise ValueError('Source evidence must have a safe local path.')
@@ -148,7 +148,7 @@ def register_locked(kind, manifest, replace, techniques=None):
                 changes[index.REGISTRY.resolve()] = storage.json_bytes(projects)
     if target.exists():
         backup=ROOT/'style-library/runtime/registration-backups'/f'{target.stem}-{hashlib.sha256(target.read_bytes()).hexdigest()}.json'
-        if not backup.exists():atomic(backup,json.loads(target.read_text()))
+        if not backup.exists():atomic(backup,json.loads(target.read_text(encoding='utf-8')))
     expected = {path: hashlib.sha256(raw).hexdigest() if isinstance(raw, bytes) else raw
                 for path, raw in snapshots.items()}
     storage.commit(changes, {'request_id': str(uuid.uuid4()), 'operation': 'register-'+kind, 'id': item['id']}, expected)

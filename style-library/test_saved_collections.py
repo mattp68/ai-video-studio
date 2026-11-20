@@ -22,13 +22,13 @@ class QuietHandler(Handler):
 class CollectionsTests(unittest.TestCase):
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory();self.root=Path(self.tmp.name).resolve();self.base=self.root/'style-library';self.base.mkdir()
-        self.catalog=self.base/'catalog.json';self.registry=self.base/'projects.json';self.registry.write_text('{"projects":[]}')
+        self.catalog=self.base/'catalog.json';self.registry=self.base/'projects.json';self.registry.write_text('{"projects":[]}', encoding='utf-8')
         self.data={'entries':[{'id':'one','version':'V01','media_path':'references/one/source.mp4','source_sha256':'a'*64,'source_url':None,'duration':10},
                               {'id':'two','version':'V01','media_path':'references/two/source.mp4','source_sha256':'b'*64,'source_url':None,'duration':10},
                               {'id':'slides','version':'V01','asset_type':'carousel','slides':[{'path':'references/slides/one.png','sha256':'c'*64},{'path':'references/slides/two.png','sha256':'d'*64}]}],
                    'techniques':[{'id':'tech-reveal','examples':[{'id':'example-one','style_id':'one','start':1,'end':3,'source_version':'V01','source_path':'references/one/source.mp4','source_sha256':'a'*64},
                                                                     {'id':'example-two','style_id':'two','start':4,'end':7,'source_version':'V01','source_path':'references/two/source.mp4','source_sha256':'b'*64}]}]}
-        self.catalog.write_text(json.dumps(self.data));(self.base/'reference-notes.json').write_text('{"notes":[{"text":"Keep my edit direction"}]}')
+        self.catalog.write_text(json.dumps(self.data), encoding='utf-8');(self.base/'reference-notes.json').write_text('{"notes":[{"text":"Keep my edit direction"}]}', encoding='utf-8')
         self.patches=[patch.object(index,'STUDIO',self.root),patch.object(index,'REGISTRY',self.registry),patch.object(storage,'BASE',self.base),patch.object(storage,'CATALOG',self.catalog),patch.object(storage,'JOURNALS',self.base/'runtime/review-actions')]
         for p in self.patches:p.start()
 
@@ -77,7 +77,7 @@ class CollectionsTests(unittest.TestCase):
     def test_stale_collection_or_changed_source_never_overwrites_members(self):
         c=self.create()['collections'][0];revision=collections.current()['revision'];self.save('rename',id=c['id'],name='Renamed')
         with self.assertRaises(storage.ReviewError):collections.save({'action':'rename','revision':revision,'request_id':str(uuid.uuid4()),'id':c['id'],'name':'Old draft'})
-        old=self.member();self.data['techniques'][0]['examples'][0]['end']=4;self.catalog.write_text(json.dumps(self.data))
+        old=self.member();self.data['techniques'][0]['examples'][0]['end']=4;self.catalog.write_text(json.dumps(self.data), encoding='utf-8')
         before=(self.base/'collections.json').read_bytes()
         with self.assertRaisesRegex(storage.ReviewError,'source changed'):self.save('add',id=c['id'],members=[old])
         self.assertEqual(before,(self.base/'collections.json').read_bytes())
@@ -91,7 +91,7 @@ class CollectionsTests(unittest.TestCase):
             with self.assertRaises(storage.ReviewError):collections.resolve(raw,self.data)
 
     def test_unavailable_member_can_be_removed_and_restored_without_widening_scope(self):
-        c=self.create()['collections'][0];self.data['entries']=[];self.catalog.write_text(json.dumps(self.data))
+        c=self.create()['collections'][0];self.data['entries']=[];self.catalog.write_text(json.dumps(self.data), encoding='utf-8')
         result=self.save('remove',id=c['id'],members=c['members']);index_=len(result['collections'][0]['history'])-1
         self.save('undo_remove',id=c['id'],index=index_);self.assertEqual(collections.current()['collections'][0]['members'],c['members'])
 
@@ -107,7 +107,7 @@ class CollectionsTests(unittest.TestCase):
     def test_source_changes_during_commit_preserve_the_original_collection(self):
         c=self.create()['collections'][0];before=(self.base/'collections.json').read_bytes();commit=storage.commit
         def changed(*args):
-            self.catalog.write_text(json.dumps(self.data|{'owner_update':True}));return commit(*args)
+            self.catalog.write_text(json.dumps(self.data|{'owner_update':True}), encoding='utf-8');return commit(*args)
         with patch.object(storage,'commit',side_effect=changed),self.assertRaises(storage.ReviewError):self.save('add',id=c['id'],members=[self.member(example_id='example-two')])
         self.assertEqual((self.base/'collections.json').read_bytes(),before)
 

@@ -31,16 +31,16 @@ class FeedbackTests(unittest.TestCase):
         self.project.mkdir(parents=True)
         (self.project / 'cut.mp4').write_bytes(b'original-media')
         (self.project / 'scene.png').write_bytes(b'original-frame')
-        (self.project / 'STATUS.md').write_text('Accepted V01, V02 pending.')
-        (self.project / 'approval-state.json').write_text('{"history":[]}')
+        (self.project / 'STATUS.md').write_text('Accepted V01, V02 pending.', encoding='utf-8')
+        (self.project / 'approval-state.json').write_text('{"history":[]}', encoding='utf-8')
         self.record = {'id': 'demo', 'primary_artifact': 'edit-v02', 'source_notes': [],
                        'artifacts': [{'id': 'edit-v02', 'type': 'video', 'path': 'cut.mp4',
                                       'role': 'current', 'label': 'Larger cards', 'version': 'V02'},
                                      {'id': 'board-v01', 'type': 'board', 'role': 'history',
                                       'label': 'Storyboard', 'frames': [{'path': 'scene.png'}]}]}
         self.registry = self.base / 'projects.json'
-        self.registry.write_text(json.dumps({'projects': [self.record]}))
-        (self.base / 'catalog.json').write_text('{"entries":[]}')
+        self.registry.write_text(json.dumps({'projects': [self.record]}), encoding='utf-8')
+        (self.base / 'catalog.json').write_text('{"entries":[]}', encoding='utf-8')
         self.patches = [patch.object(index, 'STUDIO', self.root), patch.object(index, 'REGISTRY', self.registry),
                         patch.object(storage, 'BASE', self.base), patch.object(storage, 'CATALOG', self.base / 'catalog.json'),
                         patch.object(storage, 'JOURNALS', self.base / 'runtime/review-actions')]
@@ -108,11 +108,11 @@ class FeedbackTests(unittest.TestCase):
 
     def test_symlink_and_malformed_inputs_never_write_outside_project(self):
         outside = self.root / 'outside.json'
-        outside.write_text('{"keep":"safe"}')
+        outside.write_text('{"keep":"safe"}', encoding='utf-8')
         (self.project / 'review-feedback.json').symlink_to(outside)
         with self.assertRaises(storage.ReviewError):
             feedback.save(self.body)
-        self.assertEqual(outside.read_text(), '{"keep":"safe"}')
+        self.assertEqual(outside.read_text(encoding='utf-8'), '{"keep":"safe"}')
         for delta in [{'project_id': '../escape'}, {'artifact_id': 'unknown'}, {'text': ''},
                       {'text': 'x' * 2001}, {'text': 'bad\x00note'}, {'request_id': 'bad'}]:
             with self.assertRaises((feedback.FeedbackError, storage.ReviewError)):
@@ -181,7 +181,7 @@ class FeedbackTests(unittest.TestCase):
                 feedback.save_link({**body, **change})
         self.assertFalse((self.project / 'review-feedback-links.json').exists())
         path = self.project / 'review-feedback.json'
-        data = json.loads(path.read_text()); data['notes'][0]['status'] = 'applied'; path.write_text(json.dumps(data))
+        data = json.loads(path.read_text(encoding='utf-8')); data['notes'][0]['status'] = 'applied'; path.write_text(json.dumps(data), encoding='utf-8')
         with self.assertRaisesRegex(feedback.FeedbackError, 'changed'):
             feedback.save_link(body)
         self.assertFalse((self.project / 'review-feedback-links.json').exists())
@@ -191,7 +191,7 @@ class FeedbackTests(unittest.TestCase):
         link = feedback.save_link({'project_id': 'demo', 'artifact_id': 'edit-v02', 'note_ids': [note['id']]})
         feedback.save({**self.body, 'request_id': str(uuid.uuid4()), 'text': 'Later note'})
         path = self.project / 'review-feedback.json'
-        data = json.loads(path.read_text()); data['notes'][0]['status'] = 'applied'; path.write_text(json.dumps(data))
+        data = json.loads(path.read_text(encoding='utf-8')); data['notes'][0]['status'] = 'applied'; path.write_text(json.dumps(data), encoding='utf-8')
         result = feedback.current('demo', link['id'])
         self.assertEqual(result['selection']['note_ids'], [note['id']])
         self.assertEqual(result['notes'][0]['status'], 'applied')
@@ -207,16 +207,16 @@ class FeedbackTests(unittest.TestCase):
         body = {'project_id': 'demo', 'artifact_id': 'edit-v02', 'note_ids': [note['id']]}
         link = feedback.save_link(body)
         path = self.project / 'review-feedback-links.json'
-        data = json.loads(path.read_text()); data['links'][link['id']]['artifact_id'] = None; path.write_text(json.dumps(data))
+        data = json.loads(path.read_text(encoding='utf-8')); data['links'][link['id']]['artifact_id'] = None; path.write_text(json.dumps(data), encoding='utf-8')
         with self.assertRaises(feedback.FeedbackError):
             feedback.current('demo', link['id'])
         with self.assertRaises(feedback.FeedbackError):
             feedback.save_link(body)
-        outside = self.root / 'outside-links.json'; outside.write_text('{"keep":"safe"}')
+        outside = self.root / 'outside-links.json'; outside.write_text('{"keep":"safe"}', encoding='utf-8')
         path.unlink(); path.symlink_to(outside)
         with self.assertRaises(storage.ReviewError):
             feedback.save_link(body)
-        self.assertEqual(outside.read_text(), '{"keep":"safe"}')
+        self.assertEqual(outside.read_text(encoding='utf-8'), '{"keep":"safe"}')
         with self.assertRaises(feedback.FeedbackError):
             feedback.current('demo', '../outside')
 
@@ -233,7 +233,7 @@ class FeedbackTests(unittest.TestCase):
         for thread in threads: thread.start()
         for thread in threads: thread.join()
         self.assertFalse(errors)
-        self.assertEqual(len(json.loads((self.project / 'review-feedback-links.json').read_text())['links']), 2)
+        self.assertEqual(len(json.loads((self.project / 'review-feedback-links.json').read_text(encoding='utf-8'))['links']), 2)
         self.assertEqual(len(feedback.current('demo')['notes']), 2)
 
     def test_link_endpoint_boundaries_and_exact_selection_reload(self):
@@ -290,9 +290,9 @@ class FeedbackTests(unittest.TestCase):
     def test_applied_note_edit_retains_application_and_original_wording(self):
         feedback.save(self.body)
         path = self.project / 'review-feedback.json'
-        data = json.loads(path.read_text())
+        data = json.loads(path.read_text(encoding='utf-8'))
         data['notes'][0].update(status='applied', applied_in={'artifact_id': 'edit-v03', 'version': 'V03'})
-        path.write_text(json.dumps(data))
+        path.write_text(json.dumps(data), encoding='utf-8')
         note = feedback.current('demo')['notes'][0]
         result = feedback.change(self.change_body(note, text='Clarified historical note.'))['notes'][0]
         self.assertEqual(result['status'], 'applied')
@@ -310,8 +310,8 @@ class FeedbackTests(unittest.TestCase):
                 feedback.change(action)
         self.assertEqual((self.project / 'review-feedback.json').read_bytes(), before)
         path = self.project / 'review-feedback.json'
-        data = json.loads(path.read_text()); data['notes'][0]['status'] = 'applied'
-        path.write_text(json.dumps(data))
+        data = json.loads(path.read_text(encoding='utf-8')); data['notes'][0]['status'] = 'applied'
+        path.write_text(json.dumps(data), encoding='utf-8')
         with self.assertRaises(feedback.FeedbackError):
             feedback.change(self.change_body(updated, text='Cannot erase applied history'))
 
@@ -342,8 +342,8 @@ class FeedbackTests(unittest.TestCase):
         new_link = feedback.save_link({**body, 'note_revisions': {note['id']: edited['content_revision']}})
         self.assertNotEqual(link['id'], new_link['id'])
         path = self.project / 'review-feedback.json'
-        data = json.loads(path.read_text()); data['notes'][0]['status'] = 'applied'
-        path.write_text(json.dumps(data))
+        data = json.loads(path.read_text(encoding='utf-8')); data['notes'][0]['status'] = 'applied'
+        path.write_text(json.dumps(data), encoding='utf-8')
         self.assertEqual(feedback.current('demo', new_link['id'])['selection']['note_ids'], [note['id']])
 
     def test_change_validation_and_http_origin_guards(self):
@@ -376,9 +376,9 @@ class FeedbackTests(unittest.TestCase):
         token = hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()[:24]
         record = {**payload, 'id': token, 'created_at': '2026-10-28T00:00:00Z'}
         (self.project / 'review-feedback-links.json').write_text(json.dumps(
-            {'schema_version': 1, 'project_id': 'demo', 'links': {token: record}}))
+            {'schema_version': 1, 'project_id': 'demo', 'links': {token: record}}), encoding='utf-8')
         self.assertEqual(feedback.current('demo', token)['selection'], record)
         feedback.change(self.change_body(note, text='Updated instruction'))
         with self.assertRaisesRegex(feedback.FeedbackError, 'edited or deleted'):
             feedback.current('demo', token)
-        self.assertEqual(json.loads((self.project / 'review-feedback-links.json').read_text())['links'][token], record)
+        self.assertEqual(json.loads((self.project / 'review-feedback-links.json').read_text(encoding='utf-8'))['links'][token], record)

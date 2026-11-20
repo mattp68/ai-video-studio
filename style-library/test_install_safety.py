@@ -48,7 +48,7 @@ class InstallComparisonTests(unittest.TestCase):
         self.assertEqual(check_install.compare(self.root, {'files': [entry('alias.txt', b'same')]})['missing'], ['alias.txt'])
     def test_unsafe_or_malformed_manifest_is_rejected(self):
         for files in [[entry('../outside.txt', b'x')], [entry('/etc/hosts', b'x')], [{'path': 'same.txt', 'sha256': 'not-a-hash'}], []]:
-            path = self.root / 'manifest.json'; path.write_text(json.dumps({'files': files}))
+            path = self.root / 'manifest.json'; path.write_text(json.dumps({'files': files}), encoding='utf-8')
             with self.subTest(files=files), self.assertRaises(ValueError):
                 check_install.load_manifest(str(path))
     def test_only_official_release_manifests_are_fetched(self):

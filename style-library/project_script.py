@@ -25,7 +25,7 @@ def read(project):
     path = storage.write_target(project, 'script-state.json')
     if not path.exists(): return path, {'schema_version': 1, 'project_id': project['id'], 'current': None, 'versions': []}
     if path.stat().st_size > 8000000: raise FeedbackError('Your script history needs attention in chat. It is preserved.', 503)
-    data = json.loads(path.read_text())
+    data = json.loads(path.read_text(encoding='utf-8'))
     if (not isinstance(data, dict) or data.get('schema_version') != 1 or data.get('project_id') != project['id'] or
             not isinstance(data.get('versions'), list)):
         raise FeedbackError('Saved scripts need repair. Your existing files are preserved.', 503)
@@ -62,7 +62,7 @@ def context(project_id):
     expected = {path: index.digest(path) if path.exists() else None,
                 original_path: index.digest(original_path) if original_path.exists() else None,
                 index.REGISTRY.resolve(): index.digest(index.REGISTRY)}
-    revision = hashlib.sha256(storage.json_bytes([[str(p.relative_to(index.STUDIO)), h] for p, h in expected.items()])).hexdigest()
+    revision = hashlib.sha256(storage.json_bytes([[p.relative_to(index.STUDIO).as_posix(), h] for p, h in expected.items()])).hexdigest()
     return project, path, data, original or '', assembled, expected, revision
 
 
@@ -100,7 +100,7 @@ def save(body, expected_files=None):
         if body['revision'] != revision: raise FeedbackError('This script changed elsewhere. Reload the saved script; your draft is kept.')
         if len(data['versions']) >= 80: raise FeedbackError('Your script history is full. Ask your editing chat to archive it safely.')
         for journal in storage.JOURNALS.glob('*/transaction.json'):
-            if json.loads(journal.read_text()).get('state') == 'prepared': raise FeedbackError('An earlier save needs recovery first.', 503)
+            if json.loads(journal.read_text(encoding='utf-8')).get('state') == 'prepared': raise FeedbackError('An earlier save needs recovery first.', 503)
         at = datetime.now(timezone.utc).isoformat(timespec='seconds')
         if not data['versions'] and original.strip():
             if len(original) > LIMIT: raise FeedbackError('The existing script is too long to version here. It is preserved.', 413)

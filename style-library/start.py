@@ -7,9 +7,9 @@ def write_launcher(url):
     # Keep its redirect aligned with the actual verified server, including a
     # fallback port, while preserving the requested view or exact reference.
     script='if(location.protocol === "file:"){location.replace('+json.dumps(url+'/')+' + location.search + location.hash);}\n'
-    (BASE/'dist/launch.js').write_text(script)
+    (BASE/'dist/launch.js').write_text(script,encoding='utf-8')
 if state.exists():
-    old=json.loads(state.read_text())
+    old=json.loads(state.read_text(encoding='utf-8'))
     try:
         info=json.load(urllib.request.urlopen(old['url']+'/api/health',timeout=1))
         if info.get('root')==str(BASE):write_launcher(old['url']);print(json.dumps(old));sys.exit(0)
@@ -29,4 +29,4 @@ for _ in range(40):
         if info.get('root')==str(BASE):break
     except Exception:time.sleep(.1)
 else:raise RuntimeError('Gallery did not become ready; see runtime/server.log.')
-result={'url':url,'pid':process.pid,'root':str(BASE),'host':'127.0.0.1'};state.write_text(json.dumps(result,indent=2)+'\n');write_launcher(url);print(json.dumps(result))
+result={'url':url,'pid':process.pid,'root':str(BASE),'host':'127.0.0.1'};state.write_text(json.dumps(result,indent=2)+'\n',encoding='utf-8');write_launcher(url);print(json.dumps(result))

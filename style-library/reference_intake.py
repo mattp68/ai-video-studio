@@ -110,7 +110,7 @@ def set_visibility(body):
     with index.STATE_LOCK:
         before,data,state,kind,token,record=visibility_snapshot(body['id'],body.get('example_id'))
         for path in storage.JOURNALS.glob('*/transaction.json'):
-            if json.loads(path.read_text()).get('state')=='prepared':raise IntakeError('An earlier library save needs recovery before continuing.',503)
+            if json.loads(path.read_text(encoding='utf-8')).get('state')=='prepared':raise IntakeError('An earlier library save needs recovery before continuing.',503)
         if body['revision']!=state['revision']:raise IntakeError('This library item changed. Refresh and review it before trying again.',409)
         removed=body['action']=='remove'
         if state['removed']==removed:return {**state,'changed':False}
@@ -159,7 +159,7 @@ def save(body):
         storage.check_storage()
         if CATALOG.resolve()!=storage.CATALOG.resolve():raise IntakeError('The library path needs repair before saving.',503)
         for path in storage.JOURNALS.glob('*/transaction.json'):
-            if json.loads(path.read_text()).get('state')=='prepared':raise IntakeError('An earlier library save needs recovery before continuing.',503)
+            if json.loads(path.read_text(encoding='utf-8')).get('state')=='prepared':raise IntakeError('An earlier library save needs recovery before continuing.',503)
         before,data=read_catalog();entries=data['entries']
         if action=='create':
             existing=next((e for e in entries if e.get('source_url') and key(e['source_url'])==key(url)),None)

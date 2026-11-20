@@ -25,7 +25,7 @@ class RegisterOrderTest(unittest.TestCase):
         self.base.mkdir()
         self.registry = self.base / 'projects.json'
         self.registry.write_text(json.dumps({'schema_version': 1, 'projects': [
-            {'id': 'recent', 'title': 'Recent'}, {'id': 'middle', 'title': 'Middle'}, {'id': 'oldest', 'title': 'Oldest'}]}))
+            {'id': 'recent', 'title': 'Recent'}, {'id': 'middle', 'title': 'Middle'}, {'id': 'oldest', 'title': 'Oldest'}]}), encoding='utf-8')
         self.patches = [patch.object(register, 'ROOT', self.root), patch.object(library, 'BASE', self.base),
                         patch.object(index, 'STUDIO', self.root), patch.object(index, 'REGISTRY', self.registry),
                         patch.object(storage, 'BASE', self.base), patch.object(storage, 'CATALOG', self.base/'catalog.json'),
@@ -41,7 +41,7 @@ class RegisterOrderTest(unittest.TestCase):
     def descriptor(self, slug, title):
         project = self.root / 'projects' / slug
         project.mkdir(parents=True, exist_ok=True)
-        (project / 'STATUS.md').write_text('Review V01.')
+        (project / 'STATUS.md').write_text('Review V01.', encoding='utf-8')
         (project / 'review.mp4').write_bytes(b'synthetic fixture')
         manifest = project / 'studio-entry.json'
         manifest.write_text(json.dumps({
@@ -49,11 +49,11 @@ class RegisterOrderTest(unittest.TestCase):
             'state': 'review', 'stage': 'edit', 'primary_artifact': 'review',
             'source_notes': [{'label': 'Status', 'path': 'STATUS.md'}],
             'artifacts': [{'id': 'review', 'label': 'Review', 'type': 'video', 'version': 'v01',
-                           'path': 'review.mp4', 'role': 'current'}]}))
+                           'path': 'review.mp4', 'role': 'current'}]}), encoding='utf-8')
         return manifest
 
     def projects(self):
-        return json.loads(self.registry.read_text())['projects']
+        return json.loads(self.registry.read_text(encoding='utf-8'))['projects']
 
     def reference(self, **fields):
         poster = self.base/'dist/assets/fixture.png'
@@ -65,17 +65,17 @@ class RegisterOrderTest(unittest.TestCase):
                 'palette': [], 'traits': {}, 'keep': [], 'avoid': [], 'moments': [], 'notes': [],
                 'poster': 'assets/fixture.png', 'evidence': 'Synthetic fixture', **fields}
         manifest = self.root/'reference.json'
-        manifest.write_text(json.dumps(item))
+        manifest.write_text(json.dumps(item), encoding='utf-8')
         return manifest
 
     def catalog(self):
-        return json.loads((self.base/'catalog.json').read_text())
+        return json.loads((self.base/'catalog.json').read_text(encoding='utf-8'))
 
     def test_reference_registration_dates_and_links_both_arrival_orders(self):
         for project_first in [True, False]:
             with self.subTest(project_first=project_first):
-                self.registry.write_text('{"projects":[]}')
-                (self.base/'catalog.json').write_text('{"entries":[],"techniques":[]}')
+                self.registry.write_text('{"projects":[]}', encoding='utf-8')
+                (self.base/'catalog.json').write_text('{"entries":[],"techniques":[]}', encoding='utf-8')
                 project = self.descriptor('demo', 'Demo')
                 reference = self.reference()
                 order = [('project', project), ('reference', reference)]
@@ -93,11 +93,11 @@ class RegisterOrderTest(unittest.TestCase):
         register.register('project', self.descriptor('demo', 'Updated'), replace=True)
         self.assertEqual(self.projects()[0]['reference_id'], 'demo-reference')
         data = self.catalog();data['entries'][0].pop('created_at')
-        (self.base/'catalog.json').write_text(json.dumps(data))
+        (self.base/'catalog.json').write_text(json.dumps(data), encoding='utf-8')
         register.register('reference', self.reference(), replace=True)
         self.assertNotIn('created_at', self.catalog()['entries'][0])
         data = self.catalog();data['entries'][0]['added_on']='2026-09-01'
-        (self.base/'catalog.json').write_text(json.dumps(data))
+        (self.base/'catalog.json').write_text(json.dumps(data), encoding='utf-8')
         register.register('reference', self.reference(created_at='2026-11-05'), replace=True)
         self.assertNotIn('created_at', self.catalog()['entries'][0])
         self.assertEqual(self.catalog()['entries'][0]['added_on'], '2026-09-01')
@@ -105,8 +105,8 @@ class RegisterOrderTest(unittest.TestCase):
     def test_registration_does_not_guess_a_project_link(self):
         for extra in [{'version': 'another'}, {'project_id': 'other'}, {'media_path': 'projects/demo/other.mp4'}, {'collection':'reference'}]:
             with self.subTest(extra=extra):
-                self.registry.write_text('{"projects":[]}')
-                (self.base/'catalog.json').write_text('{"entries":[],"techniques":[]}')
+                self.registry.write_text('{"projects":[]}', encoding='utf-8')
+                (self.base/'catalog.json').write_text('{"entries":[],"techniques":[]}', encoding='utf-8')
                 self.descriptor('demo', 'Demo');(self.root/'projects/demo/other.mp4').write_bytes(b'other')
                 register.register('reference', self.reference(**extra))
                 register.register('project', self.descriptor('demo', 'Demo'))
@@ -114,7 +114,7 @@ class RegisterOrderTest(unittest.TestCase):
 
     def test_two_file_registration_rolls_back_and_preserves_concurrent_writes(self):
         register.register('project', self.descriptor('demo', 'Demo'))
-        (self.base/'catalog.json').write_text('{"entries":[],"techniques":[]}')
+        (self.base/'catalog.json').write_text('{"entries":[],"techniques":[]}', encoding='utf-8')
         manifest = self.reference();before_index=self.registry.read_bytes();before_catalog=(self.base/'catalog.json').read_bytes()
         original=storage.atomic_write;failed=False
         def failure(path, value):
@@ -127,7 +127,7 @@ class RegisterOrderTest(unittest.TestCase):
         self.assertEqual((self.base/'catalog.json').read_bytes(), before_catalog)
         commit=storage.commit
         def changed(*args):
-            (self.base/'catalog.json').write_text('{"entries":[],"techniques":[],"owner_change":true}')
+            (self.base/'catalog.json').write_text('{"entries":[],"techniques":[],"owner_change":true}', encoding='utf-8')
             return commit(*args)
         with patch.object(storage, 'commit', side_effect=changed), self.assertRaises(storage.ReviewError):
             register.register('reference', manifest)
@@ -142,7 +142,7 @@ class RegisterOrderTest(unittest.TestCase):
         self.assertFalse((self.base/'catalog.json').exists())
         register.register('reference',self.reference())
         data=self.catalog();data['entries'].append({**data['entries'][0],'id':'second-match'})
-        (self.base/'catalog.json').write_text(json.dumps(data))
+        (self.base/'catalog.json').write_text(json.dumps(data), encoding='utf-8')
         with self.assertRaisesRegex(ValueError,'More than one'):register.register('project',project)
         self.assertEqual(self.registry.read_bytes(),before)
 
@@ -166,10 +166,10 @@ class RegisterOrderTest(unittest.TestCase):
     def test_one_script_request_can_only_be_registered_to_one_project(self):
         request_id = str(uuid.uuid4())
         first = self.descriptor('draft-one', 'First draft')
-        first.write_text(json.dumps({**json.loads(first.read_text()), 'starter_request_id': request_id}))
+        first.write_text(json.dumps({**json.loads(first.read_text(encoding='utf-8')), 'starter_request_id': request_id}), encoding='utf-8')
         register.register('project', first)
         other = self.descriptor('draft-two', 'Other draft')
-        other.write_text(json.dumps({**json.loads(other.read_text()), 'starter_request_id': request_id}))
+        other.write_text(json.dumps({**json.loads(other.read_text(encoding='utf-8')), 'starter_request_id': request_id}), encoding='utf-8')
         before = self.registry.read_bytes()
         with self.assertRaisesRegex(ValueError, 'already has a project'):
             register.register('project', other)
@@ -187,14 +187,14 @@ class RegisterOrderTest(unittest.TestCase):
         first = {'id':'first','start':1,'end':3,'poster_at':2,'poster':'assets/techniques/first-v1.jpg',
                  'label':'First example','evidence':'Fixture first range'}
         second = first | {'id':'second','start':5,'end':8,'poster_at':6,'poster':'assets/techniques/second-v1.jpg'}
-        plan.write_text(json.dumps([{'family':family,'example':first}, {'family':{'id':'tech-reveal'},'example':second}]))
+        plan.write_text(json.dumps([{'family':family,'example':first}, {'family':{'id':'tech-reveal'},'example':second}]), encoding='utf-8')
         with patch.object(register.prepare_assets, 'poster') as poster:
             register.register('reference', self.reference(collection='reference', duration=10), True, plan)
             self.assertEqual(poster.call_count,2)
             register.register('reference', entry, True, plan)
             self.assertEqual(poster.call_count,2)
             near_duplicate = first | {'id':'retry','start':1.1,'poster':'assets/techniques/retry-v1.jpg'}
-            plan.write_text(json.dumps([{'family':{'id':'tech-reveal'},'example':near_duplicate}]))
+            plan.write_text(json.dumps([{'family':{'id':'tech-reveal'},'example':near_duplicate}]), encoding='utf-8')
             register.register('reference', entry, True, plan)
             self.assertEqual(poster.call_count,2)
         current = self.catalog()
@@ -214,8 +214,8 @@ class RegisterOrderTest(unittest.TestCase):
         data = self.catalog();entry = data['entries'][0]
         entry.update(approval={'files':[{'path':'review.mp4','sha256':index.digest(self.root/'projects/demo/review.mp4')}]},
                      delivery_status='final',review_status='preferred',reference_note='Owner note')
-        (self.base/'catalog.json').write_text(json.dumps(data))
-        plan = self.root/'examples.json';plan.write_text('[]')
+        (self.base/'catalog.json').write_text(json.dumps(data), encoding='utf-8')
+        plan = self.root/'examples.json';plan.write_text('[]', encoding='utf-8')
         with patch.object(register.prepare_assets,'poster'):
             register.register('reference', manifest, True, plan)
         saved = self.catalog()['entries'][0]
@@ -227,7 +227,7 @@ class RegisterOrderTest(unittest.TestCase):
 
     def test_new_references_still_append(self):
         catalog = self.base / 'catalog.json'
-        catalog.write_text(json.dumps({'schema_version': 4, 'entries': [{'id': 'saved-earlier'}], 'techniques': []}))
+        catalog.write_text(json.dumps({'schema_version': 4, 'entries': [{'id': 'saved-earlier'}], 'techniques': []}), encoding='utf-8')
         poster = self.base / 'dist' / 'assets' / 'fixture.png'
         poster.parent.mkdir(parents=True)
         poster.write_bytes(b'synthetic poster')
@@ -236,9 +236,9 @@ class RegisterOrderTest(unittest.TestCase):
             'id': 'saved-later', 'title': 'Saved later', 'subtitle': 'Fixture', 'version': 'v1', 'collection': 'reference',
             'creator': 'Fixture creator', 'creator_id': 'fixture-creator', 'summary': 'Synthetic fixture.', 'tags': [],
             'palette': [], 'traits': [], 'keep': [], 'avoid': [], 'moments': [], 'notes': [],
-            'poster': 'assets/fixture.png', 'evidence': 'Synthetic fixture.'}))
+            'poster': 'assets/fixture.png', 'evidence': 'Synthetic fixture.'}), encoding='utf-8')
         register.register('reference', manifest)
-        self.assertEqual([e['id'] for e in json.loads(catalog.read_text())['entries']], ['saved-earlier', 'saved-later'])
+        self.assertEqual([e['id'] for e in json.loads(catalog.read_text(encoding='utf-8'))['entries']], ['saved-earlier', 'saved-later'])
 
 
 if __name__ == '__main__':

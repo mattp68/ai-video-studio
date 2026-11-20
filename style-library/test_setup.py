@@ -33,8 +33,8 @@ class NodeVersionTests(unittest.TestCase):
 class RendererUpdateTests(unittest.TestCase):
     def test_active_owned_preview_stops_full_setup_before_install_or_writes(self):
         with tempfile.TemporaryDirectory() as folder:
-            root=Path(folder);cli=root/'node_modules/hyperframes/bin/hyperframes.mjs';cli.parent.mkdir(parents=True);cli.write_text('retained CLI')
-            owner=root/'projects/demo/index.html';owner.parent.mkdir(parents=True);owner.write_text('accepted composition')
+            root=Path(folder);cli=root/'node_modules/hyperframes/bin/hyperframes.mjs';cli.parent.mkdir(parents=True);cli.write_text('retained CLI', encoding='utf-8')
+            owner=root/'projects/demo/index.html';owner.parent.mkdir(parents=True);owner.write_text('accepted composition', encoding='utf-8')
             before={str(p.relative_to(root)):p.read_bytes() for p in root.rglob('*') if p.is_file()}
             listing={'ok':True,'result':{'sessions':[{'projectDir':str(root/'projects/demo'),'state':'running'}]}}
             with patch.object(setup,'ROOT',root),patch.object(sys,'argv',['setup']),patch.object(setup.shutil,'which',return_value='/tool'),patch.object(setup,'node_supported',return_value=True),patch.object(setup.subprocess,'run',return_value=setup.subprocess.CompletedProcess([],0,stdout=json.dumps(listing))),patch.object(setup,'run',side_effect=AssertionError('No dependency install during active preview')):
@@ -42,12 +42,12 @@ class RendererUpdateTests(unittest.TestCase):
             self.assertEqual(before,{str(p.relative_to(root)):p.read_bytes() for p in root.rglob('*') if p.is_file()})
     def test_foreign_preview_does_not_block_this_installation(self):
         with tempfile.TemporaryDirectory() as folder:
-            root=Path(folder)/'studio';cli=root/'node_modules/hyperframes/bin/hyperframes.mjs';cli.parent.mkdir(parents=True);cli.write_text('CLI')
+            root=Path(folder)/'studio';cli=root/'node_modules/hyperframes/bin/hyperframes.mjs';cli.parent.mkdir(parents=True);cli.write_text('CLI', encoding='utf-8')
             listing={'ok':True,'result':{'sessions':[{'projectDir':str(Path(folder)/'other-studio/projects/demo'),'state':'running'}]}}
             with patch.object(setup,'ROOT',root),patch.object(setup.subprocess,'run',return_value=setup.subprocess.CompletedProcess([],0,stdout=json.dumps(listing))):setup.guard_renderer_update()
     def test_unavailable_or_malformed_preview_inventory_stops_safely(self):
         with tempfile.TemporaryDirectory() as folder:
-            root=Path(folder);cli=root/'node_modules/hyperframes/bin/hyperframes.mjs';cli.parent.mkdir(parents=True);cli.write_text('CLI')
+            root=Path(folder);cli=root/'node_modules/hyperframes/bin/hyperframes.mjs';cli.parent.mkdir(parents=True);cli.write_text('CLI', encoding='utf-8')
             for stdout in ['not JSON','{"ok":false,"result":{"sessions":[]}}','{"ok":true,"result":{}}']:
                 with self.subTest(stdout=stdout),patch.object(setup,'ROOT',root),patch.object(setup.subprocess,'run',return_value=setup.subprocess.CompletedProcess([],0,stdout=stdout)):
                     with self.assertRaisesRegex(SystemExit,'Could not verify'):setup.guard_renderer_update()
@@ -73,7 +73,7 @@ class CapabilityTests(unittest.TestCase):
         self.assertEqual(r['capabilities']['reference_browser']['status'],'check_in_chat')
         self.assertEqual(list(self.root.iterdir()),[])
     def test_render_readiness_needs_python_image_package(self):
-        cli=self.root/'node_modules/hyperframes/bin/hyperframes.mjs';cli.parent.mkdir(parents=True);cli.write_text('fixture')
+        cli=self.root/'node_modules/hyperframes/bin/hyperframes.mjs';cli.parent.mkdir(parents=True);cli.write_text('fixture', encoding='utf-8')
         with patch.object(setup.shutil,'which',return_value='/tool'),patch.object(setup,'node_supported',return_value=True):
             self.assertFalse(setup.capability_report()['ready_for_media'])
             with patch.object(setup,'local_package_present',return_value=True):
@@ -82,7 +82,7 @@ class CapabilityTests(unittest.TestCase):
         self.assertEqual(r['capabilities']['reference_browser']['status'],'check_in_chat')
     def test_studio_only_can_be_ready_without_optional_media(self):
         base=self.root/'style-library';base.mkdir()
-        for name in ['catalog','projects','settings']:(base/f'{name}.json').write_text('{}')
+        for name in ['catalog','projects','settings']:(base/f'{name}.json').write_text('{}', encoding='utf-8')
         r=setup.capability_report();self.assertTrue(r['ready_for_studio']);self.assertFalse(r['ready_for_media'])
     def test_non_mac_does_not_claim_local_speech_support(self):
         with patch.object(setup.platform,'system',return_value='Windows'),patch.object(setup.platform,'machine',return_value='AMD64'):
@@ -95,8 +95,8 @@ class SetupTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             root=Path(folder);base=root/'style-library';base.mkdir()
             for name in ['catalog','projects','settings']:
-                (base/f'{name}.example.json').write_text('{"empty_starter":true}')
-                (base/f'{name}.json').write_text(json.dumps({'owner':name,'records':[{'id':'keep-me'}]}))
+                (base/f'{name}.example.json').write_text('{"empty_starter":true}', encoding='utf-8')
+                (base/f'{name}.json').write_text(json.dumps({'owner':name,'records':[{'id':'keep-me'}]}), encoding='utf-8')
             for name in ['projects/demo/raw/video.mov','projects/demo/exports/final.mp4','references/creator/source.mp4','projects/demo/approval-state.json','projects/demo/script-state.json','projects/demo/script-brief.json','projects/demo/script-hooks.json','projects/demo/script-feedback.json','style-library/writing-voice.json','projects/demo/review-feedback.json','projects/demo/review-feedback-links.json','style-library/reference-notes.json','style-library/collections.json','style-library/runtime/editor-sessions/demo.json','README.md','.env']:
                 p=root/name;p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes(b'owner-specific bytes: '+name.encode())
             before={str(p.relative_to(root)):p.read_bytes() for p in root.rglob('*') if p.is_file()}
@@ -106,8 +106,8 @@ class SetupTests(unittest.TestCase):
     def test_setup_creates_only_missing_registries(self):
         with tempfile.TemporaryDirectory() as folder:
             root=Path(folder);base=root/'style-library';base.mkdir()
-            for name in ['catalog','projects','settings']:(base/f'{name}.example.json').write_text('{"empty_starter":true}')
-            (base/'catalog.json').write_text('{"entries":[{"id":"existing-library"}]}')
+            for name in ['catalog','projects','settings']:(base/f'{name}.example.json').write_text('{"empty_starter":true}', encoding='utf-8')
+            (base/'catalog.json').write_text('{"entries":[{"id":"existing-library"}]}', encoding='utf-8')
             before=(base/'catalog.json').read_bytes()
             with patch.object(setup,'ROOT',root),patch.object(sys,'argv',['setup','--studio-only']),patch.object(setup,'capability_report',return_value={}),contextlib.redirect_stdout(io.StringIO()):setup.main()
             self.assertEqual((base/'catalog.json').read_bytes(),before)
@@ -123,6 +123,6 @@ class SetupTests(unittest.TestCase):
     def test_short_run_cannot_claim_full_render_validation(self):
         with tempfile.TemporaryDirectory() as folder:
             root=Path(folder);(root/'projects/setup-demo').mkdir(parents=True);(root/'runtime').mkdir()
-            (root/'runtime/smoke-report.json').write_text(json.dumps({'raw_unchanged':True,'motion_rendered':False}))
+            (root/'runtime/smoke-report.json').write_text(json.dumps({'raw_unchanged':True,'motion_rendered':False}), encoding='utf-8')
             with patch.object(smoke,'ROOT',root),patch.object(sys,'argv',['smoke']):
                 with self.assertRaisesRegex(RuntimeError,'did not complete'):smoke.main()

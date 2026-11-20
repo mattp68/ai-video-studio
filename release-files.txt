@@ -1,4 +1,5 @@
 # Exact source files permitted in the starter export; owner data is never included.
+.gitattributes
 .gitignore
 .github/workflows/check.yml
 AGENTS.md
