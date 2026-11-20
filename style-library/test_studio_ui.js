@@ -884,3 +884,49 @@ test('source tags remain searchable after the Tags facet is replaced with actual
  assert.equal(h.run('matchingExamples(techniques[0]).map(x=>x.id).join()'),'third,fourth');
  h.run('libraryFilters.techniques=["missing-family"]');assert.equal(h.run('matchingExamples(techniques[0]).length'),0);assert.match(h.run('filterItems("techniques").find(x=>x.id==="missing-family").label'),/Unavailable/);
 });
+
+test('library technique picks are on by default, can be turned off and stay with the draft',()=>{
+ const h=starter();
+ assert.equal(h.node('#start-auto-pick-field').hidden,false);assert.equal(h.node('#start-auto-pick').checked,true);
+ assert.match(h.dialog.innerHTML,/<strong>Borrow techniques from my library<\/strong><small>Where one fits a scene, your chat borrows it and links the example\. Where nothing fits, it designs something new\. You can swap or drop any pick\.<\/small>/);
+ assert.match(h.node('#project-starter').value,/Where a technique from my Reference Library fits a storyboard scene, borrow it and link the example so I can swap or drop it\. Design anything else new and label it\./);
+ h.node('#start-auto-pick').checked=false;h.node('#start-auto-pick').listeners.change();
+ assert.match(h.node('#project-starter').value,/Don’t borrow techniques from my library; use only the inspiration I chose\./);
+ assert.doesNotMatch(h.node('#project-starter').value,/Reference Library fits/);
+ assert.equal(JSON.parse(h.storage.get('ai-video-studio-starter-v2')).autoPick,false);
+ const reloaded=starter({storage:h.storage});
+ assert.equal(reloaded.node('#start-auto-pick').checked,false);assert.match(reloaded.node('#project-starter').value,/Don’t borrow techniques/);
+ reloaded.node('#start-auto-pick').checked=true;reloaded.node('#start-auto-pick').listeners.change();
+ assert.match(reloaded.node('#project-starter').value,/Where a technique from my Reference Library fits/);
+ reloaded.node('journey-idea').listeners.click();
+ assert.equal(reloaded.node('#start-auto-pick-field').hidden,true);assert.doesNotMatch(reloaded.node('#project-starter').value,/Reference Library fits|borrow techniques from my library/i);
+ reloaded.type('carousel');
+ assert.equal(reloaded.node('#start-auto-pick-field').hidden,true);assert.doesNotMatch(reloaded.node('#project-starter').value,/Reference Library fits|borrow techniques from my library/i);
+ const older=starter({storage:new Map([['ai-video-studio-starter-v2',JSON.stringify({start:'footage',goal:'Saved before picks existed'})]])});
+ assert.equal(older.node('#start-auto-pick').checked,true);assert.match(older.node('#project-starter').value,/Where a technique from my Reference Library fits/);
+});
+
+test('storyboard scenes show their technique pick with an exact library link, or a new move',()=>{
+ const escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ const context={window:{},esc:escape,document:{addEventListener(){}}};
+ runInNewContext(readFileSync(join(__dirname,'dist/review-layout.js'),'utf8'),context);
+ const layout=context.window.ReviewLayout;
+ const pick={technique_id:'tech-checklist',example_id:'checklist-kallaway-blur-pills',title:'Checklist reveal',creator:'@kallawaymarketing',why:'You name three tools in a row.',repeat:'Kallaway style'};
+ const note=layout.techniqueNote(pick);
+ assert.match(note,/<h5>Technique<\/h5>/);assert.match(note,/<strong>Checklist reveal<\/strong> · @kallawaymarketing/);
+ assert.match(note,/href="\.\/#technique=tech-checklist&example=checklist-kallaway-blur-pills" target="_blank" rel="noopener">See example ↗/);
+ assert.match(note,/You name three tools in a row\./);assert.match(note,/Also in your recent project “Kallaway style”/);
+ const fresh=layout.techniqueNote({new:true,title:'Countdown clock',why:'Nothing in your library shows a countdown.',technique_id:'tech-x',example_id:'y'});
+ assert.match(fresh,/<strong>New:<\/strong> Countdown clock/);assert.match(fresh,/Nothing in your library/);assert.doesNotMatch(fresh,/href=/);
+ const unsafe=layout.techniqueNote({technique_id:'tech-x" onclick="alert(1)',example_id:'ok',title:'<img src=x onerror=alert(1)>',creator:'<b>me</b>',why:'<script>'});
+ assert.doesNotMatch(unsafe,/href=|<img|<b>|<script>/);assert.match(unsafe,/&lt;img/);
+ for(const value of [undefined,null,'tech-checklist',{technique_id:'tech-checklist'},{title:'  '}])assert.equal(layout.techniqueNote(value),'');
+ const media={innerHTML:''},notes={innerHTML:'',querySelector:()=>null};
+ const parts={'[data-scene-media]':media,'[data-scene-notes]':notes,'[data-scene-position]':{},'[data-frame-step="-1"]':{},'[data-frame-step="1"]':{}};
+ const container={querySelector:s=>parts[s]||null,querySelectorAll:()=>[]};
+ const board={type:'board',frames:[{title:'Hook',available:true,url:'/a.png',path:'a.png',copy:'ON SCREEN',technique:pick},{title:'Plain',available:true,url:'/b.png',path:'b.png'}]};
+ assert.equal(layout.updateFrame(container,board,0),true);
+ const html=notes.innerHTML;
+ assert.ok(html.indexOf('On screen')<html.indexOf('Technique')&&html.indexOf('Technique')<html.indexOf('Movement & sound'));
+ layout.updateFrame(container,board,1);assert.doesNotMatch(notes.innerHTML,/Technique/);
+});

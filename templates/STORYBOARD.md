@@ -6,6 +6,7 @@
 - Source: raw takes / approved cut / written talk or carousel brief
 - Spoken assembly or outline location:
 - Design profile and reference intent:
+- Library technique picks: on / off; the creator's own picks:
 - Proposed vs accepted direction:
 
 ## Frame or slide 01
@@ -18,6 +19,7 @@
 - Real media / conceptual illustration / generated asset:
 - Entrance, movement, hold and exit:
 - Transition into the next frame:
+- Technique: library pick (title, exact example link, creator, why it fits) or new:
 - Sound intent (including intentional silence):
 - Why this visual advances the story:
 - Open decision / targeted review question:
