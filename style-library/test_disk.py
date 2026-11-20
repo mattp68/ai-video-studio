@@ -100,8 +100,9 @@ class FramesSpaceTests(unittest.TestCase):
         message = disk.frames_space_warning('demo/.scratch', 2e9, 10, free=lambda _: 5e9)
         self.assertIn('5.0 GB free', message)
         self.assertIn('2.0 GB of frames', message)
-        # Frames larger than the usual margin still need room of their own.
-        self.assertIn('30.0 GB of frames', disk.frames_space_warning('demo', 30e9, 10, free=lambda _: 20e9))
+        # The frames need room on top of the usual margin.
+        self.assertIn('30.0 GB of frames', disk.frames_space_warning('demo', 30e9, 10, free=lambda _: 35e9))
+        self.assertIsNone(disk.frames_space_warning('demo', 30e9, 10, free=lambda _: 41e9))
 
     def test_threshold_can_be_turned_off_and_a_failed_check_never_blocks(self):
         with patch.dict(os.environ, {'AI_VIDEO_STUDIO_MIN_FREE_GB': '0'}):

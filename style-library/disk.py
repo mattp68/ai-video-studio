@@ -128,7 +128,7 @@ def frames_space_warning(folder, frame_bytes, minimum_gb=None, free=free_bytes):
     """Plain-language warning when a frame-sequence render (such as Blender) may run out of disk.
 
     The frames are written to folder (a version's .scratch) before they are encoded
-    into one clip, so that disk needs room for frame_bytes as well as the usual margin.
+    into one clip, so that disk needs room for frame_bytes on top of the usual margin.
     """
     if minimum_gb is None:
         minimum_gb = minimum_free_gb()
@@ -138,7 +138,7 @@ def frames_space_warning(folder, frame_bytes, minimum_gb=None, free=free_bytes):
         available = free(folder)
     except OSError:
         return None  # The check is advisory; never block a render because it failed.
-    if available >= max(minimum_gb * 1e9, frame_bytes * 1.2):
+    if available >= minimum_gb * 1e9 + frame_bytes:
         return None
     return (f"Warning: only {size_label(available)} free on the disk holding the project. This render can write "
             f"up to {size_label(frame_bytes)} of frames to .scratch before encoding the clip (they are removed "
