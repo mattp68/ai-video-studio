@@ -35,6 +35,40 @@ jobs:
       - run: for file in style-library/dist/*.js; do node --check "$file"; done
       - run: node --test style-library/test_*.js
       - run: python3 scripts/export_release.py --name ci-source-check
+  windows:
+    # Early Windows evidence. Informational only: release-gate does not need
+    # this job, so a Windows failure is reported here without blocking merges
+    # or releases. Every step runs even if an earlier one fails, so one run
+    # shows everything that passes and fails on Windows.
+    timeout-minutes: 20
+    runs-on: windows-latest
+    continue-on-error: true
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+      - name: Release files match the allowlist
+        if: ${{ !cancelled() }}
+        run: python scripts/check_release.py --git-ref HEAD
+      - name: Python tests (verbose, one line per test)
+        if: ${{ !cancelled() }}
+        run: python -m unittest discover -s style-library -p 'test_*.py' -v
+      - name: Gallery scripts parse
+        if: ${{ !cancelled() }}
+        run: for file in style-library/dist/*.js; do node --check "$file"; done
+      - name: Gallery tests
+        if: ${{ !cancelled() }}
+        run: node --test style-library/test_*.js
+      - name: Starter export builds
+        if: ${{ !cancelled() }}
+        run: python scripts/export_release.py --name ci-source-check
   audits:
     timeout-minutes: 15
     runs-on: ubuntu-latest

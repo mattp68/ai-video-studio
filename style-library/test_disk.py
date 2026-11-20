@@ -56,7 +56,7 @@ class CopyTests(unittest.TestCase):
         source = self.root / 'v01'
         (source / 'assets').mkdir(parents=True)
         (source / 'assets/plate.mp4').write_bytes(b'plate')
-        (source / 'index.html').write_text('<main></main>')
+        (source / 'index.html').write_text('<main></main>', encoding='utf-8')
         (source / '.scratch').mkdir()
         (source / '.scratch/f-0001.png').write_bytes(b'frame')
         (source / 'assets/.scratch').mkdir()
@@ -100,7 +100,7 @@ class NewVersionTests(unittest.TestCase):
         self.root = Path(self.tmp.name).resolve()
         self.version = self.root / 'projects/demo/assembly-v01'
         (self.version / 'assets').mkdir(parents=True)
-        (self.version / 'index.html').write_text('<main data-composition-id="demo"></main>')
+        (self.version / 'index.html').write_text('<main data-composition-id="demo"></main>', encoding='utf-8')
         (self.version / 'assets/voice.wav').write_bytes(b'voice')
         for folder in ['.scratch', '.hyperframes', 'node_modules', '.thumbnails']:
             (self.version / folder).mkdir()
@@ -128,7 +128,7 @@ class NewVersionTests(unittest.TestCase):
         self.run_new_version(self.version)
         created = self.root / 'projects/demo/assembly-v02'
         self.assertEqual((created / 'assets/voice.wav').read_bytes(), b'voice')
-        self.assertIn('data-composition-id', (created / 'index.html').read_text())
+        self.assertIn('data-composition-id', (created / 'index.html').read_text(encoding='utf-8'))
         for folder in ['.scratch', '.hyperframes', 'node_modules', '.thumbnails']:
             self.assertFalse((created / folder).exists(), folder)
         self.assertTrue((self.version / '.scratch/file').exists())
@@ -154,7 +154,7 @@ class IngestTests(unittest.TestCase):
             root = Path(tmp).resolve()
             project = root / 'projects/demo'
             (project / 'raw').mkdir(parents=True)
-            (project / 'media-manifest.json').write_text(json.dumps({'version': 1, 'sources': []}))
+            (project / 'media-manifest.json').write_text(json.dumps({'version': 1, 'sources': []}), encoding='utf-8')
             original = root / 'Downloads/take.mov'
             original.parent.mkdir()
             original.write_bytes(b'footage')
@@ -163,7 +163,7 @@ class IngestTests(unittest.TestCase):
                 studio.ingest(SimpleNamespace(project=project, source=original))
             self.assertEqual((project / 'raw/take.mov').read_bytes(), b'footage')
             self.assertEqual(original.read_bytes(), b'footage')
-            manifest = json.loads((project / 'media-manifest.json').read_text())
+            manifest = json.loads((project / 'media-manifest.json').read_text(encoding='utf-8'))
             self.assertEqual(manifest['sources'][0]['file'], 'raw/take.mov')
             with self.assertRaises(ValueError):
                 with patch.object(studio, 'probe', return_value={'format': {}}):

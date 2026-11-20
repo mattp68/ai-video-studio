@@ -71,7 +71,7 @@ class ProjectToolsTests(unittest.TestCase):
         (self.source/'.scratch/f-0002.png').write_bytes(b'more frames');revision=self.body()['revision']
         (self.source/'.scratch/f-0003.png').write_bytes(b'regenerable');self.assertEqual(self.body()['revision'],revision)
         with patch.object(tools.subprocess,'run',side_effect=self.fake_launch):tools.open_editor(self.body())
-        self.assertEqual((self.copy/'assets/plate.mp4').read_bytes(),b'plate');self.assertIn('data-composition-id',(self.copy/'index.html').read_text())
+        self.assertEqual((self.copy/'assets/plate.mp4').read_bytes(),b'plate');self.assertIn('data-composition-id',(self.copy/'index.html').read_text(encoding='utf-8'))
         for folder in ['.scratch','.thumbnails','.transcode-cache']:self.assertFalse((self.copy/folder).exists(),folder)
 
     def test_reopening_keeps_manual_changes_in_the_same_working_copy(self):
