@@ -2,7 +2,7 @@
 
 ## How it works for you
 
-When your editing chat plans the storyboard, it looks through your Reference Library for techniques that fit each part of your video. It searches your own videos, other creators you saved and any creator packs you installed. In the Studio, each storyboard scene then shows a **Technique** line: the technique it borrows, whose example it is, **See example** to watch that exact example in your library, and one line on why it fits. A scene that reuses a move from a recent project says so, and a move designed from scratch shows **New:** with its name.
+When your editing chat plans the storyboard, it looks through your Reference Library for techniques that fit each part of your video. This is on by default, whether or not you used Start a project. It searches your own videos, other creators you saved and any creator packs you installed, and borrows a technique only where one fits. In the Studio, a storyboard scene that borrows one shows a **Technique** line: the technique it borrows, whose example it is, **See example** to watch that exact example in your library, and one line on why it fits. A scene that reuses a move from a recent project says so, and a move designed from scratch shows **New:** with its name.
 
 You stay in charge:
 
@@ -11,7 +11,7 @@ You stay in charge:
 - **Fresh ideas when nothing fits.** The chat borrows only when a technique really suits the moment. Otherwise it designs something new and labels it **new**. After you approve the video, new moves are added to your library like any other technique, so every video you finish makes the next one easier.
 - **Variety.** The chat avoids repeating a move from your last few projects unless you ask for it ("use the same zoom as last time").
 - **Creator packs.** Pack techniques are recreated with your own footage, following the pack's license. The pack's videos never end up in your export unless its license allows it.
-- **Turn it off.** Untick **Pick techniques from my library** in Start a project, or tell the chat "no library techniques". It then uses only the inspiration you chose.
+- **Turn it off.** Untick **Borrow techniques from my library** in Start a project, or tell the chat "no library techniques". It then uses only the inspiration you chose.
 
 An empty or small library is fine. If you installed a creator pack, its techniques are picked from day one, even in a brand-new studio. Otherwise the chat designs more of the moves itself until your library fills up.
 
@@ -21,7 +21,7 @@ An empty or small library is fine. If you installed a creator pack, its techniqu
 
 Run recall when you plan the storyboard (docs/WORKFLOW.md step 3), after the spoken cut, when the words and timing of each beat are known. Run it again while building (step 4) for any beat that still has no technique, and when a review note asks for a different move.
 
-Skip it when the creator opted out: the starter request says "Don't pick techniques from my library", the creator said so in chat, or brief.md records `Library technique picks: off`. Record the creator's choice in brief.md either way, so later chats follow it. Script-only work doesn't need it.
+Skip it when the creator opted out: the starter request says "Don't borrow techniques from my library" (older requests say "Don't pick techniques from my library"; treat both as an opt-out), the creator said so in chat, or brief.md records `Library technique picks: off`. Record the creator's choice in brief.md either way, so later chats follow it. Script-only work doesn't need it.
 
 The creator's explicit choices come first. Inspiration from the starter request, copied `#technique=…` or `#style=…` links and saved borrowing notes decide the beats they target. Run recall only for the remaining beats, and never replace an explicit pick with a recalled one.
 
@@ -54,7 +54,7 @@ Prefer variety. Avoid a technique in `recently_used_in` unless it is clearly the
 
 ### Show the picks in the storyboard
 
-For every scene, name the technique, link the exact example and give one short reason:
+For each scene that borrows a technique, name it, link the exact example and give one short reason:
 
 ```
 Technique: Checklist reveal, "three pills sharpen as named" (@kallawaymarketing)
@@ -62,7 +62,7 @@ http://127.0.0.1:4870/#technique=tech-checklist&example=checklist-kallaway-blur-
 Why: you name three tools in a row, so each one lights up as you say it.
 ```
 
-or, when nothing in the library fits:
+or, when nothing in the library fits and you design the move:
 
 ```
 Technique: new, "receipt countdown"

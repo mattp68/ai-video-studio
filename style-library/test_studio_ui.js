@@ -888,21 +888,22 @@ test('source tags remain searchable after the Tags facet is replaced with actual
 test('library technique picks are on by default, can be turned off and stay with the draft',()=>{
  const h=starter();
  assert.equal(h.node('#start-auto-pick-field').hidden,false);assert.equal(h.node('#start-auto-pick').checked,true);
- assert.match(h.node('#project-starter').value,/Pick techniques from my Reference Library for each storyboard scene, and link each pick so I can swap or drop it\./);
+ assert.match(h.dialog.innerHTML,/<strong>Borrow techniques from my library<\/strong><small>Where one fits a scene, your chat borrows it and links the example\. Where nothing fits, it designs something new\. You can swap or drop any pick\.<\/small>/);
+ assert.match(h.node('#project-starter').value,/Where a technique from my Reference Library fits a storyboard scene, borrow it and link the example so I can swap or drop it\. Design anything else new and label it\./);
  h.node('#start-auto-pick').checked=false;h.node('#start-auto-pick').listeners.change();
- assert.match(h.node('#project-starter').value,/Don’t pick techniques from my library; use only the inspiration I chose\./);
- assert.doesNotMatch(h.node('#project-starter').value,/Pick techniques from my Reference Library/);
+ assert.match(h.node('#project-starter').value,/Don’t borrow techniques from my library; use only the inspiration I chose\./);
+ assert.doesNotMatch(h.node('#project-starter').value,/Reference Library fits/);
  assert.equal(JSON.parse(h.storage.get('ai-video-studio-starter-v2')).autoPick,false);
  const reloaded=starter({storage:h.storage});
- assert.equal(reloaded.node('#start-auto-pick').checked,false);assert.match(reloaded.node('#project-starter').value,/Don’t pick techniques/);
+ assert.equal(reloaded.node('#start-auto-pick').checked,false);assert.match(reloaded.node('#project-starter').value,/Don’t borrow techniques/);
  reloaded.node('#start-auto-pick').checked=true;reloaded.node('#start-auto-pick').listeners.change();
- assert.match(reloaded.node('#project-starter').value,/Pick techniques from my Reference Library/);
+ assert.match(reloaded.node('#project-starter').value,/Where a technique from my Reference Library fits/);
  reloaded.node('journey-idea').listeners.click();
- assert.equal(reloaded.node('#start-auto-pick-field').hidden,true);assert.doesNotMatch(reloaded.node('#project-starter').value,/pick techniques/i);
+ assert.equal(reloaded.node('#start-auto-pick-field').hidden,true);assert.doesNotMatch(reloaded.node('#project-starter').value,/Reference Library fits|borrow techniques from my library/i);
  reloaded.type('carousel');
- assert.equal(reloaded.node('#start-auto-pick-field').hidden,true);assert.doesNotMatch(reloaded.node('#project-starter').value,/pick techniques/i);
+ assert.equal(reloaded.node('#start-auto-pick-field').hidden,true);assert.doesNotMatch(reloaded.node('#project-starter').value,/Reference Library fits|borrow techniques from my library/i);
  const older=starter({storage:new Map([['ai-video-studio-starter-v2',JSON.stringify({start:'footage',goal:'Saved before picks existed'})]])});
- assert.equal(older.node('#start-auto-pick').checked,true);assert.match(older.node('#project-starter').value,/Pick techniques from my Reference Library/);
+ assert.equal(older.node('#start-auto-pick').checked,true);assert.match(older.node('#project-starter').value,/Where a technique from my Reference Library fits/);
 });
 
 test('storyboard scenes show their technique pick with an exact library link, or a new move',()=>{
