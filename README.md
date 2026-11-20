@@ -68,7 +68,7 @@ That's it. Your own AI video editing studio.
 - **Visual storyboards.** Review the creative direction before committing to a full edit.
 - **AI-powered editing.** Create captions, B-roll, motion graphics, transitions, and sound effects using available tools.
 - **Timestamped feedback.** Tell AI exactly what to change and keep previous versions.
-- **Reusable reference library.** Save your videos, creative references, and editing techniques to use in future projects.
+- **Reusable reference library.** Save your videos, creative references, and editing techniques to use in future projects. Your chat borrows the ones that fit each new storyboard.
 
 And there's plenty more you can do with it.
 
@@ -99,6 +99,7 @@ For deeper technical details:
 - [Capabilities and optional tools](docs/CAPABILITIES.md)
 - [Updates and upgrades](docs/UPDATING.md)
 - [Creator packs](docs/PACKS.md)
+- [Technique picks](docs/TECHNIQUE-PICKS.md)
 - [Security and privacy](SECURITY.md)
 
 Your studio runs locally on your computer. Your personal projects and references are not included in the public repository.
