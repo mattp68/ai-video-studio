@@ -13,7 +13,7 @@ You stay in charge:
 - **Creator packs.** Pack techniques are recreated with your own footage, following the pack's license. The pack's videos never end up in your export unless its license allows it.
 - **Turn it off.** Untick **Pick techniques from my library** in Start a project, or tell the chat "no library techniques". It then uses only the inspiration you chose.
 
-An empty or small library is fine. The chat simply designs more of the moves itself until your library fills up.
+An empty or small library is fine. If you installed a creator pack, its techniques are picked from day one, even in a brand-new studio. Otherwise the chat designs more of the moves itself until your library fills up.
 
 ## For the editing chat
 
@@ -78,7 +78,7 @@ Write the same in STORYBOARD.md and in the scene's `technique` field in the proj
               "repeat": "Kallaway style"}
 ```
 
-Add `repeat` with the recent project's title only when the result's `recently_used_in` lists one. For a new move use `{"new": true, "title": "Receipt countdown", "why": "…"}`. The Studio only displays this field; leave it out of a scene with no technique. When you present the storyboard, tell the creator they can swap or drop any pick.
+Add `repeat` with the recent project's title only when the result's `recently_used_in` lists one. For a pack technique, name the pack in `creator`, such as `"Matt Paige · Creator Pack 1"`, so the scene shows where it comes from. For a new move use `{"new": true, "title": "Receipt countdown", "why": "…"}`. The Studio only displays this field; leave it out of a scene with no technique. When you present the storyboard, tell the creator they can swap or drop any pick.
 
 ### Swaps, drops and the opt-out
 

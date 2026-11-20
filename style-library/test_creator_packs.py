@@ -25,6 +25,7 @@ import project_index as index
 import review_actions as storage
 import saved_collections
 import serve
+import technique_recall
 import technique_upkeep
 
 PACK = 'creator-pack-1'
@@ -360,6 +361,40 @@ class InstallTests(PackTestCase):
             server.shutdown()
             server.server_close()
             thread.join()
+
+    def test_new_buyer_gets_pack_technique_picks_with_license_and_recipe(self):
+        """Launch day: an empty studio installs a pack, and storyboard recall picks from it under the pack's terms."""
+        fresh = Fixture(self.tmp / 'fresh')
+        fresh.json('style-library/catalog.json', {'schema_version': 4, 'entries': [], 'techniques': []})
+        fresh.json('style-library/projects.json', {'schema_version': 1, 'projects': []})
+        self.buyer = fresh
+        overrides = self.author.json('overrides.json', {'techniques': {
+            'tech-orbit': {'title': 'Orbiting cards', 'summary': 'Cards orbit around the speaker as each one is named.'}}})
+        recipes = self.tmp / 'recipes'
+        (recipes / 'tech-orbit').mkdir(parents=True)
+        (recipes / 'tech-orbit' / 'index.html').write_text('<!doctype html><div class="orbit"></div>')
+        _, path = self.build(overrides=overrides, recipes=recipes)
+        self.install(path)
+        with patch.object(technique_recall, 'STUDIO', fresh.root):
+            result = technique_recall.recall('Cards orbit around me as I name each tool')
+            self.assertEqual(technique_recall.recall('cards orbit', source='mine')['results'], [])
+            self.assertEqual([r['technique_id'] for r in technique_recall.recall('cards orbit', source='packs')['results']][:1],
+                             [f'tech-{PACK}-orbit'])
+        top = result['results'][0]
+        self.assertEqual(top['technique_id'], f'tech-{PACK}-orbit')
+        self.assertEqual(top['pack']['id'], PACK)
+        self.assertEqual(top['pack']['name'], 'Creator Pack 1')
+        self.assertEqual(top['pack']['license_summary'], 'Personal use in your own videos. No redistribution or resale.')
+        self.assertTrue((fresh.root / top['pack']['license_file']).is_file())
+        self.assertTrue(top['recipe'].startswith(f'references/pack-{PACK}/recipes/'))
+        self.assertTrue((fresh.root / top['recipe'] / 'index.html').is_file())
+        self.assertIn('recreate it; read its license', top['reason'])
+        self.assertIn('copy any recipe into the project first', result['note'])
+        example = top['examples'][0]
+        self.assertEqual((example['source']['kind'], example['source']['pack_id'], example['source']['creator']),
+                         ('pack', PACK, 'Test Author'))
+        self.assertTrue(example['media_path'].startswith(f'references/pack-{PACK}/media/'))
+        self.assertEqual(example['link'], f'#technique=tech-{PACK}-orbit&example={PACK}-orbit-demo')
 
     def test_each_pack_family_stays_its_own_card_beside_same_titled_families(self):
         catalog = self.buyer.read('style-library/catalog.json')
