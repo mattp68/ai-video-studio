@@ -2,7 +2,7 @@
 
 ## How it works for you
 
-When your editing chat plans the storyboard, it looks through your Reference Library for techniques that fit each part of your video. It searches your own videos, other creators you saved and any creator packs you installed. Each storyboard scene then says which technique it borrows, links the exact example so you can watch it, and gives one line on why it fits.
+When your editing chat plans the storyboard, it looks through your Reference Library for techniques that fit each part of your video. It searches your own videos, other creators you saved and any creator packs you installed. In the Studio, each storyboard scene then shows a **Technique** line: the technique it borrows, whose example it is, **See example** to watch that exact example in your library, and one line on why it fits. A scene that reuses a move from a recent project says so, and a move designed from scratch shows **New:** with its name.
 
 You stay in charge:
 
@@ -74,10 +74,11 @@ Write the same in STORYBOARD.md and in the scene's `technique` field in the proj
 ```json
 "technique": {"technique_id": "tech-checklist", "example_id": "checklist-kallaway-blur-pills",
               "title": "Checklist reveal", "creator": "@kallawaymarketing",
-              "why": "You name three tools in a row, so each one lights up as you say it."}
+              "why": "You name three tools in a row, so each one lights up as you say it.",
+              "repeat": "Kallaway style"}
 ```
 
-For a new move use `{"new": true, "title": "Receipt countdown", "why": "…"}`. When you present the storyboard, tell the creator they can swap or drop any pick.
+Add `repeat` with the recent project's title only when the result's `recently_used_in` lists one. For a new move use `{"new": true, "title": "Receipt countdown", "why": "…"}`. The Studio only displays this field; leave it out of a scene with no technique. When you present the storyboard, tell the creator they can swap or drop any pick.
 
 ### Swaps, drops and the opt-out
 

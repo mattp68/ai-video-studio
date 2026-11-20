@@ -65,7 +65,18 @@ window.ReviewLayout = (() => {
   function frameMedia(f) {
     return !f.available ? '<p>This scene is unavailable.</p>' : f.media_type === 'video' ? `<video controls muted playsinline preload="metadata" src="${h(f.url)}" aria-label="${h(f.title)}"></video>` : `<button class="enlarge-frame" data-enlarge-frame aria-label="Enlarge ${h(f.title)}"><img src="${h(f.url)}" alt="${h(f.title)}"><span>Enlarge ↗</span></button>`;
   }
-  function frameNotes(a, f) { return `<p class="frame-timing">${h(f.timing || '')}</p><h4 class="frame-title">${h(f.title)}</h4>${f.speech ? `<div class="frame-note"><h5>Spoken line</h5><p>${h(f.speech)}</p></div>` : ''}${f.copy ? `<div class="frame-note"><h5>On screen</h5><p>${h(f.copy)}</p></div>` : ''}<details class="scene-details"><summary>Movement & sound</summary>${[['Movement', f.motion], ['Sound', f.sound]].filter(([, v]) => v).map(([label, value]) => `<div class="frame-note"><h5>${label}</h5><p>${h(value)}</p></div>`).join('')}<p>${h(a.description || '')}</p>${f.available ? `<a href="${h(f.url)}" download="${h(f.path.split('/').pop())}">Download this ${a.type === 'carousel' ? 'slide' : 'frame'} ↓</a>` : ''}</details>`; }
+  // A scene's library pick, written by the editing chat (docs/TECHNIQUE-PICKS.md). Display only.
+  const familyId = /^tech-[a-z0-9]+(?:-[a-z0-9]+)*$/, exampleId = /^[a-z0-9][a-z0-9-]*$/;
+  const said = value => typeof value === 'string' && value.trim() ? value.trim() : '';
+  function techniqueNote(t) {
+    if (!t || typeof t !== 'object' || !said(t.title)) return '';
+    const why = said(t.why) ? `<p>${h(said(t.why))}</p>` : '';
+    if (t.new === true) return `<div class="frame-note frame-technique"><h5>Technique</h5><p class="technique-pick"><strong>New:</strong> ${h(said(t.title))}</p>${why}</div>`;
+    const link = familyId.test(t.technique_id || '') && exampleId.test(t.example_id || '') ? ` · <a href="./#technique=${t.technique_id}&example=${t.example_id}" target="_blank" rel="noopener">See example ↗</a>` : '';
+    const repeat = said(t.repeat) ? `<p class="technique-repeat">Also in your recent project “${h(said(t.repeat))}”</p>` : '';
+    return `<div class="frame-note frame-technique"><h5>Technique</h5><p class="technique-pick"><strong>${h(said(t.title))}</strong>${said(t.creator) ? ' · ' + h(said(t.creator)) : ''}${link}</p>${why}${repeat}</div>`;
+  }
+  function frameNotes(a, f) { return `<p class="frame-timing">${h(f.timing || '')}</p><h4 class="frame-title">${h(f.title)}</h4>${f.speech ? `<div class="frame-note"><h5>Spoken line</h5><p>${h(f.speech)}</p></div>` : ''}${f.copy ? `<div class="frame-note"><h5>On screen</h5><p>${h(f.copy)}</p></div>` : ''}${techniqueNote(f.technique)}<details class="scene-details"><summary>Movement & sound</summary>${[['Movement', f.motion], ['Sound', f.sound]].filter(([, v]) => v).map(([label, value]) => `<div class="frame-note"><h5>${label}</h5><p>${h(value)}</p></div>`).join('')}<p>${h(a.description || '')}</p>${f.available ? `<a href="${h(f.url)}" download="${h(f.path.split('/').pop())}">Download this ${a.type === 'carousel' ? 'slide' : 'frame'} ↓</a>` : ''}</details>`; }
   function revealFrame(container) {
     const strip = container.querySelector('.project-thumbs'), selected = container.querySelector('[data-project-frame][aria-pressed="true"]');
     if (!strip || !selected || strip.classList.contains('is-overview')) return;
@@ -112,5 +123,5 @@ window.ReviewLayout = (() => {
     const menu=document.querySelector('.version-picker[open]');
     if(menu){menu.open=false;menu.querySelector('summary').focus();event.preventDefault();event.stopPropagation();}
   });
-  return {stage, script, labels, versions, navigation, details, heading, content, readable, updateFrame, revealFrame};
+  return {stage, script, labels, versions, navigation, details, heading, content, readable, updateFrame, revealFrame, techniqueNote};
 })();
