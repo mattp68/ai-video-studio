@@ -112,3 +112,11 @@ Existing exports, saved compositions and editor working copies are not changed. 
 Rollback restores both previous package files and the reviewed source, then runs npm ci --ignore-scripts and the old pinned CLI's browser ensure (Chrome headless shell 152) for a media installation. Keep owner records and newer creative work.
 
 Windows early support adds .gitattributes and style-library/test_text_encoding.py, saves library paths with forward slashes and reads and writes every studio text file as UTF-8. Setup starts the same pinned browser install as node …/hyperframes.mjs browser ensure, so it also completes on Windows. Nothing changes on macOS or Linux, and no owner data is migrated or rewritten. An earlier Windows attempt may have stopped partway through setup or saved library paths with backslashes; rerun full setup there and validate the library. There is no automatic rewrite.
+
+### Beta.17 → beta.18 — approvals that keep projects moving and project thumbnails
+
+Changes scripts/register.py, style-library/review_actions.py, style-library/project_index.py, the Studio interface (studio.js, studio.css, ux.css), docs/HANDOFF.md and style-library/PROJECT-NAVIGATION.md, with their tests. There is no dependency, renderer or owner-data change, and no setup rerun. Reconcile the two instruction paragraphs with any local wording rather than overwriting it. If an installation imports a renamed asset helper in scripts/register.py, keep that local import when applying the new code. Restart only this installation's Studio server.
+
+`register.py project --replace` now keeps a project's saved review_decision and approval-state.json instead of refusing the replacement. It refuses a descriptor that drops an approved checkpoint, changes its version or files, or edits the decision, and nothing is written when it refuses. Final approval adopts the project's own unlinked library entry when the prepared library ID matches. It never adopts another project's entry, a saved reference or an archived version. /projects.json adds cover or cover_video and cover_source; older interface code ignores them. Existing registries show their thumbnails once the studio restarts.
+
+Rollback restores the previous source files and restarts the studio. Decisions, library entries and registrations made with beta.18 stay valid with beta.17 code, which reads the same fields.
