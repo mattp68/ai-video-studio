@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.1.0-beta.18 — Approvals that keep your project moving, and project thumbnails — 2026-11-23
+
+- After you approve a spoken cut or a storyboard in the Studio, or reopen a version for changes, your editing chat can now add the next stage. Before, the chat's registration step (`scripts/register.py project --replace`) refused any project with a saved decision, so the storyboard or the next version could not be added. Your approvals and their exact files stay as they are: the chat cannot drop or change an approved file or edit a saved decision, and new work gets its own version. Refreshing notes on an approved checkpoint keeps its approved state, so a final project stays final.
+- **Approve & mark final** no longer stops with "This library ID is already in use" when the project was never linked to its own library entry. Approval now uses that entry (it must name the project, or hold the project's own video when it names none), moves it to the version you approved and keeps the earlier version's techniques with the earlier version. Entries from other projects, saved references and archived versions are still refused. A version without a chosen cover uses the project's prepared library poster.
+- Projects show a thumbnail even when no cover was chosen. Each card uses the first picture it finds: a chosen cover, the linked library poster, the prepared library poster, then the first image or video of the current version and then earlier ones. A video shows a frame from about one second in. Nothing is generated or written, and a project with no picture at all keeps the placeholder. Set `cover_path` when a specific frame reads better, such as your face rather than a title card.
+
+### Upgrading from beta.17
+
+Follow docs/UPDATING.md. This is a source-only update: no dependency, renderer or owner-data change, and no setup rerun. Restart the studio afterwards. A project that was stuck works after updating: your editing chat can register its next stage again, and **Approve & mark final** works after **Refresh project**.
+
+
 ## 0.1.0-beta.17 — Technique picks, HyperFrames 0.9.71 and Windows early support — 2026-11-20
 
 - Technique picks from your library. When your editing chat plans a storyboard, it looks through your Reference Library (your own videos, creators you saved and installed creator packs) and borrows a technique wherever one fits a scene. Each storyboard scene in the Studio shows its **Technique**: what it borrows, whose example it is, **See example** to watch that exact example, and why it fits. Where nothing fits, the chat designs something new and labels it **New**; after you approve the video, new moves join your library. Your own inspiration always comes first, you can swap or drop any pick with a storyboard note, and the chat avoids repeating moves from your recent projects. Picks are on by default, including when you skip Start a project. To turn them off, untick **Borrow techniques from my library** in Start a project or tell your chat "no library techniques". The lookup (`python3 style-library/technique_recall.py`) only reads your library and uses no AI. See docs/TECHNIQUE-PICKS.md.
