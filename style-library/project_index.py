@@ -20,6 +20,8 @@ MIME = {
     '.csv': 'text/plain; charset=utf-8', '.zip': 'application/zip',
     '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
 }
+IMAGES = {'.jpg', '.jpeg', '.png', '.webp'}
+VIDEOS = {'.mp4', '.mov'}
 
 
 def registry():
@@ -61,6 +63,9 @@ def files(project):
             paths.append(frame['path'])
         for download in artifact.get('downloads', []):
             paths.append(download['path'])
+    # Appended last so existing numeric /project-files/ slots keep their meaning.
+    if isinstance(project.get('reference_poster_source'), str):
+        paths.append(project['reference_poster_source'])
     return list(dict.fromkeys(paths))
 
 
@@ -115,6 +120,80 @@ def revision(project):
 
 
 _CATALOG_COUNTS = (None, {})
+_LIBRARY_POSTERS = (None, {})
+
+
+def dist_image(relative):
+    """A saved studio image such as a library poster: an existing jpg/png/webp inside dist."""
+    if not isinstance(relative, str) or not relative:
+        return ''
+    raw = Path(relative)
+    if raw.is_absolute() or '..' in raw.parts or raw.suffix.lower() not in IMAGES:
+        return ''
+    dist = (REGISTRY.parent / 'dist').resolve()
+    target = (dist / raw).resolve()
+    return relative if target.is_relative_to(dist) and target.is_file() else ''
+
+
+def library_poster(reference_id):
+    """The poster of the Reference Library entry this project explicitly links to."""
+    global _LIBRARY_POSTERS
+    if not isinstance(reference_id, str) or not TOKEN.fullmatch(reference_id):
+        return ''
+    path = REGISTRY.with_name('catalog.json')
+    try:
+        info = path.stat()
+    except OSError:
+        return ''
+    stamp = (str(path), info.st_mtime_ns, info.st_size)
+    if _LIBRARY_POSTERS[0] != stamp:
+        posters = {}
+        try:
+            for entry in json.loads(path.read_text(encoding='utf-8')).get('entries', []):
+                if isinstance(entry, dict) and isinstance(entry.get('id'), str) and isinstance(entry.get('poster'), str):
+                    posters[entry['id']] = entry['poster']
+        except (OSError, ValueError, AttributeError, TypeError):
+            posters = {}
+        _LIBRARY_POSTERS = (stamp, posters)
+    return dist_image(_LIBRARY_POSTERS[1].get(reference_id))
+
+
+def choose_cover(project, expose):
+    """The project card's picture, so a project never needs a hand-picked cover to show one.
+
+    Order: the chosen cover_path or legacy dist cover, the linked library poster, a prepared
+    reference_poster_source, then the first image or video of the newest registered work
+    (primary artifact first). A video is returned as cover_video; the browser shows a frame
+    from it, so nothing is generated or written. No picture leaves the placeholder."""
+    def project_url(path, kinds):
+        if not isinstance(path, str) or Path(path).suffix.lower() not in kinds:
+            return ''
+        record = {'path': path}
+        expose(record)
+        return record.get('url', '')
+
+    url = project_url(project.get('cover_path'), IMAGES) or dist_image(project.get('cover'))
+    if url:
+        return {'cover': url, 'cover_source': 'chosen'}
+    url = library_poster(project.get('reference_id'))
+    if url:
+        return {'cover': url, 'cover_source': 'library'}
+    url = project_url(project.get('reference_poster_source'), IMAGES)
+    if url:
+        return {'cover': url, 'cover_source': 'poster'}
+    artifacts = project.get('artifacts', [])
+    ordered = [a for a in artifacts if a.get('id') == project.get('primary_artifact')]
+    ordered += [a for a in artifacts if a.get('id') != project.get('primary_artifact')]
+    for artifact in ordered:
+        paths = ([artifact['path']] if artifact.get('path') else []) + [f.get('path') for f in artifact.get('frames', [])]
+        for path in paths:
+            url = project_url(path, IMAGES)
+            if url:
+                return {'cover': url, 'cover_source': 'artifact'}
+            url = project_url(path, VIDEOS)
+            if url:
+                return {'cover_video': url, 'cover_source': 'video'}
+    return {}
 
 
 def cataloged_examples(source_path):
@@ -191,10 +270,9 @@ def _public_index():
                     project['stale'] = True
             except (OSError, ValueError):
                 project['stale'] = True
-        if project.get('cover_path'):
-            cover = {'path': project['cover_path']}
-            expose(cover)
-            project['cover'] = cover.get('url', '')
+        cover = choose_cover(project, expose)
+        project.pop('cover', None)
+        project.update(cover)
         for artifact in project.get('artifacts', []):
             if artifact.get('path'):
                 expose(artifact)

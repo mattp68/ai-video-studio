@@ -115,6 +115,78 @@ class ProjectsTest(unittest.TestCase):
         self.assertEqual(self.request(url, Range='bytes=2-5')[2], b'2345')
         self.assertEqual(self.request(url, Origin='https://example.invalid')[0], 403)
 
+    def cover(self):
+        p = index.public_index()['projects'][0]
+        return {k: p[k] for k in ('cover', 'cover_video', 'cover_source') if k in p}
+
+    def test_card_picture_falls_back_without_a_chosen_cover(self):
+        # Projects registered without cover_path still show real work instead of the placeholder.
+        (self.project / 'frame.jpg').write_bytes(b'storyboard frame')
+        (self.project / 'poster.jpg').write_bytes(b'prepared poster')
+        (self.project / 'chosen.png').write_bytes(b'chosen cover')
+        (self.root / 'dist' / 'assets' / 'posters').mkdir(parents=True)
+        (self.root / 'dist' / 'assets' / 'posters' / 'demo-v02.jpg').write_bytes(b'library poster')
+        (self.root / 'catalog.json').write_text(json.dumps({'entries': [
+            {'id': 'demo-ref', 'poster': 'assets/posters/demo-v02.jpg'},
+            {'id': 'escape-ref', 'poster': '../projects.json'}]}), encoding='utf-8')
+
+        video = self.cover()
+        self.assertEqual(video['cover_source'], 'video')
+        self.assertNotIn('cover', video)
+        self.assertEqual(self.request(video['cover_video'])[2], b'0123456789')
+
+        self.record['artifacts'].insert(0, {'id': 'board', 'type': 'board', 'role': 'storyboard',
+                                             'frames': [{'path': 'missing.jpg'}, {'path': 'frame.jpg'}]})
+        self.record['primary_artifact'] = 'board'
+        self.save()
+        frame = self.cover()
+        self.assertEqual(frame['cover_source'], 'artifact')
+        self.assertEqual(self.request(frame['cover'])[2], b'storyboard frame')
+
+        self.record['reference_poster_source'] = 'poster.jpg'
+        self.save()
+        poster = self.cover()
+        self.assertEqual(poster['cover_source'], 'poster')
+        self.assertEqual(self.request(poster['cover'])[2], b'prepared poster')
+
+        self.record['reference_id'] = 'escape-ref'
+        self.save()
+        self.assertEqual(self.cover()['cover_source'], 'poster')
+        self.record['reference_id'] = 'demo-ref'
+        self.save()
+        self.assertEqual(self.cover(), {'cover': 'assets/posters/demo-v02.jpg', 'cover_source': 'library'})
+
+        for chosen in ['missing.png', 'review.mp4', '../outside.jpg']:
+            self.record['cover_path'] = chosen
+            self.save()
+            self.assertEqual(self.cover()['cover_source'], 'library', chosen)
+        self.record['cover_path'] = 'chosen.png'
+        self.save()
+        chosen = self.cover()
+        self.assertEqual(chosen['cover_source'], 'chosen')
+        self.assertEqual(self.request(chosen['cover'])[2], b'chosen cover')
+
+        del self.record['cover_path']
+        self.record['cover'] = 'assets/posters/demo-v02.jpg'
+        self.save()
+        self.assertEqual(self.cover(), {'cover': 'assets/posters/demo-v02.jpg', 'cover_source': 'chosen'})
+
+    def test_project_with_no_picture_keeps_the_placeholder(self):
+        (self.project / 'script.md').write_text('An idea, not yet recorded.', encoding='utf-8')
+        self.record['artifacts'] = [{'id': 'script', 'type': 'document', 'path': 'script.md', 'role': 'current'}]
+        self.record['primary_artifact'] = 'script'
+        self.record['cover'] = 'https://example.invalid/tracker.jpg'
+        self.save()
+        self.assertEqual(self.cover(), {})
+
+    def test_prepared_poster_does_not_shift_existing_file_slots(self):
+        before = index.files(self.record)
+        (self.project / 'poster.jpg').write_bytes(b'prepared poster')
+        self.record['reference_poster_source'] = 'poster.jpg'
+        self.save()
+        self.assertEqual(index.files(self.record)[:len(before)], before)
+        self.assertEqual(self.request('/project-files/demo/1')[2], b'0123456789')
+
     def test_empty_setup_and_duplicate_registry_validation(self):
         self.registry.unlink()
         self.assertEqual(index.public_index()['projects'], [])

@@ -930,3 +930,21 @@ test('storyboard scenes show their technique pick with an exact library link, or
  assert.ok(html.indexOf('On screen')<html.indexOf('Technique')&&html.indexOf('Technique')<html.indexOf('Movement & sound'));
  layout.updateFrame(container,board,1);assert.doesNotMatch(notes.innerHTML,/Technique/);
 });
+test('project cards show a chosen picture, else a frame from the video, else the placeholder',()=>{
+ const studio=readFileSync(join(__dirname,'dist/studio.js'),'utf8'),start=studio.indexOf(' function coverMedia('),end=studio.indexOf(' function card(p){',start);
+ assert.ok(start>=0&&end>start);
+ const listeners={},h=s=>String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+ const context={h,document:{addEventListener:(name,fn,capture)=>{listeners[name]={fn,capture};}}};
+ runInNewContext(studio.slice(start,end),context);
+ assert.equal(context.coverMedia({cover:'assets/posters/a.jpg'},'Demo — saved project artwork'),'<img src="assets/posters/a.jpg" alt="Demo — saved project artwork" loading="lazy">');
+ const video=context.coverMedia({cover_video:'/project-assets/demo/abc"x'},'Demo');
+ assert.match(video,/^<video class="project-cover-frame" src="\/project-assets\/demo\/abc&quot;x#t=1" muted playsinline preload="metadata"/);
+ assert.match(video,/aria-hidden="true"><\/video><span class="project-placeholder" hidden>↗<\/span>$/);
+ assert.equal(context.coverMedia({},'Demo'),'<span class="project-placeholder">↗</span>');
+ assert.equal(listeners.error.capture,true);
+ const fallback={hidden:true};let removed=false;
+ listeners.error.fn({target:{classList:{contains:name=>name==='project-cover-frame'},nextElementSibling:fallback,remove(){removed=true;}}});
+ assert.equal(removed,true);assert.equal(fallback.hidden,false);
+ const other={hidden:true};listeners.error.fn({target:{classList:{contains:()=>false},nextElementSibling:other,remove(){throw new Error('not a cover');}}});
+ assert.equal(other.hidden,true);
+});
