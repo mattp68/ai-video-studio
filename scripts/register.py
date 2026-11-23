@@ -106,7 +106,9 @@ def register_locked(kind, manifest, replace, techniques=None):
     if existing is not None:
         if not replace:raise ValueError('ID already exists. Read its decisions, then use --replace intentionally.')
         saved = data[key][existing]
-        if saved.get('review_decision') or saved.get('approval'):
+        if kind == 'project' and saved.get('review_decision') and not saved.get('approval'):
+            keep_decisions(item, saved)
+        elif saved.get('review_decision') or saved.get('approval'):
             if kind != 'reference' or techniques is None or not saved.get('approval') or any(item.get(k) != saved.get(k) for k in ['version', 'media_path']):
                 raise ValueError('This record has saved approvals. Reconcile those explicitly before replacing its descriptor.')
             source_hash = index.digest(registered_file(ROOT, saved['media_path'], MEDIA))
@@ -153,6 +155,52 @@ def register_locked(kind, manifest, replace, techniques=None):
                 for path, raw in snapshots.items()}
     storage.commit(changes, {'request_id': str(uuid.uuid4()), 'operation': 'register-'+kind, 'id': item['id']}, expected)
     return item['id']
+
+def keep_decisions(item, saved):
+    """Carry a project's studio decisions into its next checkpoint, keeping every approved file exactly."""
+    decision = saved['review_decision']
+    if item.get('review_decision', decision) != decision:
+        raise ValueError('Only the studio records review decisions. Keep the saved review_decision as it is.')
+    if not any(note['path'] == 'approval-state.json' for note in item['source_notes']):
+        item['source_notes'].append({'label': 'Saved review decisions', 'path': 'approval-state.json'})
+    try:
+        state_file = index.resolve(item, 'approval-state.json')
+        events = json.loads(state_file.read_text(encoding='utf-8'))['events']
+    except (OSError, ValueError, KeyError, TypeError):
+        raise ValueError('This project has a saved review decision, but its approval-state.json is unavailable. Restore it before registering.')
+    if not any(isinstance(e, dict) and e.get('request_id') == decision.get('request_id') for e in events):
+        raise ValueError('approval-state.json does not contain the saved review decision. Restore it before registering.')
+    for note in item['source_notes']:
+        if note['path'] == 'approval-state.json':
+            note['sha256'] = index.digest(state_file)
+    # The latest approval of each checkpoint stays registered with exactly the files the user approved.
+    approved = {e['artifact_id']: e for e in events if isinstance(e, dict) and e.get('action') == 'approve'}
+    artifacts = {a['id']: a for a in item['artifacts']}
+    for artifact_id, event in approved.items():
+        name = f"{event.get('label', 'checkpoint')} {event.get('version', '')}".strip()
+        artifact = artifacts.get(artifact_id)
+        if artifact is None or artifact.get('version', '') != event.get('version', ''):
+            raise ValueError(f'Keep the approved {name} registered as artifact {artifact_id}. Give new work its own artifact ID and version.')
+        registered = index.primary_files(artifact)
+        for frozen in event.get('files', []):
+            try:
+                current = index.digest(index.resolve(item, frozen['path']))
+            except (OSError, ValueError):
+                current = None
+            if frozen['path'] not in registered or current != frozen['sha256']:
+                raise ValueError(f"The approved {name} file {frozen['path']} is missing or changed. Restore it and put new work in a new version.")
+    if item['primary_artifact'] == decision.get('artifact_id'):
+        # Refreshing notes for the decided checkpoint keeps the state that decision set.
+        for field in ['state', 'stage', 'review_action']:
+            if field in saved:
+                item[field] = saved[field]
+            else:
+                item.pop(field, None)
+    else:
+        # A new checkpoint answers a reopen request, so it is ready for review rather than awaiting changes.
+        item.pop('review_action', None)
+    item['review_decision'] = decision
+
 
 def register_examples(catalog, entry, plan, evidence_records):
     from technique_examples import register_examples as apply_examples

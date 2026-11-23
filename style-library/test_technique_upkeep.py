@@ -115,6 +115,38 @@ class TechniqueUpkeepTests(unittest.TestCase):
         self.assertEqual(examples[1]['style_id'],'demo-video');self.assertEqual(upkeep.discover()['items'],[])
         self.assertEqual((self.project/'old.mp4').read_bytes(),b'old export')
 
+    def test_approval_adopts_the_projects_own_unlinked_entry(self):
+        # The V01 entry was saved for this project but never linked; approving V02 promotes it instead of
+        # reporting its ID as taken. With no cover_path, the library poster comes from reference_poster_source.
+        old={'id':'old-example','style_id':'demo-video','source_version':'V01','source_path':self.entry['media_path'],
+             'source_sha256':upkeep.digest(self.project/'old.mp4'),'start':1,'end':2,'poster':'assets/techniques/old.jpg'}
+        self.data['techniques']=[self.family|{'examples':[old],'default_example':'old-example'}]
+        self.p.pop('reference_id');self.p.pop('cover_path');self.p['reference_poster_source']='frame.png';self.save()
+        self.prepare();result=self.approve()
+        self.assertEqual((result['projects'][0]['reference_id'],result['projects'][0]['state']),('demo-video','final'))
+        data=json.loads(self.catalog.read_text(encoding='utf-8'))
+        self.assertEqual([e['id'] for e in data['entries'] if not e.get('archived_from')],['demo-video'])
+        current=next(e for e in data['entries'] if e['id']=='demo-video')
+        self.assertEqual((current['version'],current['delivery_status'],current['reference_note']),('V02','final','Keep my note'))
+        self.assertEqual((self.base/'dist'/current['poster']).read_bytes(),b'poster')
+        examples=data['techniques'][0]['examples']
+        self.assertEqual([x['id'] for x in examples],['old-example','demo-reveal-v2'])
+        self.assertNotEqual(examples[0]['style_id'],'demo-video');self.assertEqual(examples[1]['style_id'],'demo-video')
+        self.assertEqual((self.project/'old.mp4').read_bytes(),b'old export')
+
+    def test_approval_never_adopts_an_entry_that_is_not_this_projects(self):
+        self.p.pop('reference_id');self.save();self.prepare()
+        for update,drop in [({'project_id':'another-project'},None),({'collection':'reference'},None),
+                            ({'archived_from':'demo-video-earlier'},None),({'media_path':'projects/another-project/old.mp4'},'project_id')]:
+            with self.subTest(update=update):
+                entry={**self.entry,**update}
+                if drop:entry.pop(drop)
+                self.catalog.write_text(json.dumps({**self.data,'entries':[entry]}), encoding='utf-8')
+                before={p:p.read_bytes() for p in [self.catalog,self.registry,self.project/'STATUS.md']}
+                with self.assertRaisesRegex(reviews.ReviewError,'already in use'):self.approve()
+                self.assertEqual({p:p.read_bytes() for p in before},before)
+                self.assertFalse((self.project/'approval-state.json').exists())
+
     def test_prepared_plan_changes_require_a_fresh_approval_review(self):
         self.prepare();before=index.revision(self.p)
         path=self.project/'technique-plan.json';data=json.loads(path.read_text(encoding='utf-8'))
