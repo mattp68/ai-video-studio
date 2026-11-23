@@ -8,7 +8,7 @@ If a copied link names a reference, parse the hash and resolve the registry ID/e
 
 Maintain one representative reference per project/source. Register first full reviews as pending. Promote to preferred/final only with actual user feedback. Keep original source identity, creator/aliases, rights, useful moments and exact technique-version/hash/windows. Run prepare_assets.py and validators when source data changes. Do not duplicate every draft.
 
-Website approvals write exact file hashes and append decisions. They do not render or publish. Do not fake an approval to test UI; use temporary fixtures. New production changes must reconcile current approvals, retain accepted files and record a new review round.
+Website approvals write exact file hashes and append decisions. They do not render or publish. Do not fake an approval to test UI; use temporary fixtures. New production changes must reconcile current approvals, retain accepted files and record a new review round. After an approval in the studio, `register.py project --replace` registers the next checkpoint and keeps the saved decision; it refuses a descriptor that drops or changes an approved file. If a project was never linked to its own library entry, final approval adopts that entry when the prepared library ID is the same, so keep one library ID per project across versions.
 
 ## Analyze in chat handoff
 
