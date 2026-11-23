@@ -241,5 +241,107 @@ class RegisterOrderTest(unittest.TestCase):
         self.assertEqual([e['id'] for e in json.loads(catalog.read_text(encoding='utf-8'))['entries']], ['saved-earlier', 'saved-later'])
 
 
+class RegisterAfterDecisionTest(unittest.TestCase):
+    """After a studio decision, the next checkpoint registers and every approved file stays exactly as approved."""
+    projects = RegisterOrderTest.projects
+    tearDown = RegisterOrderTest.tearDown
+
+    def setUp(self):
+        RegisterOrderTest.setUp(self)
+        self.registry.write_text(json.dumps({'schema_version': 1, 'projects': []}), encoding='utf-8')
+        self.folder = self.root / 'projects' / 'demo'
+        self.folder.mkdir(parents=True)
+        for name, data in [('STATUS.md', b'# Demo\n'), ('review-notes.md', b'# Review notes\n'),
+                           ('spoken-cut.mp4', b'synthetic spoken cut'), ('board-01.png', b'synthetic frame')]:
+            (self.folder / name).write_bytes(data)
+        self.manifest = self.folder / 'studio-entry.json'
+        self.write({'id': 'demo', 'title': 'Demo', 'format': 'video', 'summary': 'Spoken cut ready.',
+                    'next_step': 'Review the spoken cut.', 'state': 'review', 'stage': 'assembly',
+                    'primary_artifact': 'spoken-cut-v01',
+                    'source_notes': [{'label': 'Status', 'path': 'STATUS.md'}, {'label': 'Review notes', 'path': 'review-notes.md'}],
+                    'artifacts': [{'id': 'spoken-cut-v01', 'label': 'Spoken cut', 'type': 'video', 'version': 'V01',
+                                   'path': 'spoken-cut.mp4', 'role': 'assembly'}]})
+        register.register('project', self.manifest)
+        current = index.public_index()['projects'][0]
+        storage.apply_decision({'project_id': 'demo', 'artifact_id': 'spoken-cut-v01', 'action': 'approve',
+                                'revision': current['review']['revision'], 'request_id': str(uuid.uuid4())})
+        self.approved = self.projects()[0]
+        self.decisions = (self.folder / 'approval-state.json').read_bytes()
+
+    def write(self, descriptor):
+        self.manifest.write_text(json.dumps(descriptor), encoding='utf-8')
+        return self.manifest
+
+    def storyboard(self):
+        """What the editing chat registers next: the storyboard, keeping the approved cut as history."""
+        descriptor = json.loads(json.dumps(self.approved))
+        for field in ['review_decision', 'synced_on', 'input_note']:
+            descriptor.pop(field, None)
+        descriptor['source_notes'] = [n for n in descriptor['source_notes'] if n['path'] != 'approval-state.json']
+        descriptor.update(state='review', stage='storyboard', primary_artifact='storyboard-v01',
+                          summary='Storyboard ready.', next_step='Review the storyboard.')
+        descriptor['artifacts'][0]['role'] = 'history'
+        descriptor['artifacts'].insert(0, {'id': 'storyboard-v01', 'label': 'Storyboard', 'type': 'board', 'version': 'V01',
+                                           'role': 'current', 'frames': [{'path': 'board-01.png', 'label': 'Scene 1'}]})
+        return descriptor
+
+    def test_storyboard_registers_after_spoken_cut_approval(self):
+        self.assertEqual((self.approved['state'], self.approved['stage']), ('in_progress', 'storyboard'))
+        register.register('project', self.write(self.storyboard()), replace=True)
+        saved = self.projects()[0]
+        self.assertEqual((saved['primary_artifact'], saved['state']), ('storyboard-v01', 'review'))
+        self.assertEqual(saved['review_decision'], self.approved['review_decision'])
+        self.assertIn('approval-state.json', [n['path'] for n in saved['source_notes']])
+        self.assertEqual((self.folder / 'approval-state.json').read_bytes(), self.decisions)
+        current = index.public_index()['projects'][0]
+        self.assertFalse(current['stale'])
+        self.assertEqual((current['review']['action'], current['review']['label'], current['review']['enabled']),
+                         ('approve', 'Approve storyboard', True))
+
+    def test_approved_files_and_decisions_cannot_be_dropped_or_changed(self):
+        dropped = self.storyboard(); dropped['artifacts'].pop()
+        renamed = self.storyboard(); renamed['artifacts'][1]['version'] = 'V02'
+        rewritten = self.storyboard(); rewritten['review_decision'] = {**self.approved['review_decision'], 'action': 'reopen'}
+        before = self.registry.read_bytes()
+        for descriptor, message in [(dropped, 'Keep the approved'), (renamed, 'Keep the approved'),
+                                    (rewritten, 'Only the studio records')]:
+            with self.subTest(message=message), self.assertRaisesRegex(ValueError, message):
+                register.register('project', self.write(descriptor), replace=True)
+        (self.folder / 'spoken-cut.mp4').write_bytes(b'overwritten after approval')
+        with self.assertRaisesRegex(ValueError, 'missing or changed'):
+            register.register('project', self.write(self.storyboard()), replace=True)
+        (self.folder / 'spoken-cut.mp4').write_bytes(b'synthetic spoken cut')
+        (self.folder / 'approval-state.json').unlink()
+        with self.assertRaisesRegex(ValueError, 'approval-state.json is unavailable'):
+            register.register('project', self.write(self.storyboard()), replace=True)
+        self.assertEqual(self.registry.read_bytes(), before)
+
+    def test_refreshing_the_decided_checkpoint_keeps_its_decision_state(self):
+        (self.folder / 'review-notes.md').write_text('# Review notes\nRead again.\n', encoding='utf-8')
+        descriptor = json.loads(json.dumps(self.approved)); descriptor.update(state='review', stage='assembly')
+        register.register('project', self.write(descriptor), replace=True)
+        saved = self.projects()[0]
+        self.assertEqual((saved['state'], saved['stage'], saved['primary_artifact']), ('in_progress', 'storyboard', 'spoken-cut-v01'))
+        self.assertFalse(index.public_index()['projects'][0]['stale'])
+
+    def test_new_checkpoint_after_reopen_is_ready_for_review(self):
+        current = index.public_index()['projects'][0]
+        storage.apply_decision({'project_id': 'demo', 'artifact_id': 'spoken-cut-v01', 'action': 'reopen',
+                                'revision': current['review']['revision'], 'request_id': str(uuid.uuid4())})
+        self.approved = self.projects()[0]
+        self.assertEqual(self.approved['review_action'], 'reopened')
+        (self.folder / 'spoken-cut-v02.mp4').write_bytes(b'synthetic revised cut')
+        descriptor = json.loads(json.dumps(self.approved)); descriptor.pop('review_action')
+        descriptor.update(state='review', stage='assembly', primary_artifact='spoken-cut-v02')
+        descriptor['artifacts'][0]['role'] = 'history'
+        descriptor['artifacts'].insert(0, {'id': 'spoken-cut-v02', 'label': 'Spoken cut', 'type': 'video', 'version': 'V02',
+                                           'path': 'spoken-cut-v02.mp4', 'role': 'assembly'})
+        register.register('project', self.write(descriptor), replace=True)
+        saved = self.projects()[0]
+        self.assertNotIn('review_action', saved)
+        self.assertEqual(saved['review_decision']['action'], 'reopen')
+        self.assertEqual(index.public_index()['projects'][0]['review']['label'], 'Approve spoken cut')
+
+
 if __name__ == '__main__':
     unittest.main()

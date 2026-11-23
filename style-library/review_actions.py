@@ -178,7 +178,7 @@ def promote_video(data, entry, project, artifact, event, changes, expected):
         data['entries'].append(archived)
     for example in linked:
         example['style_id'] = archive_id
-    try: source = index.resolve(project, artifact.get('poster_path') or project.get('cover_path', ''))
+    try: source = index.resolve(project, artifact.get('poster_path') or project.get('cover_path') or project.get('reference_poster_source', ''))
     except (OSError, ValueError): raise ReviewError('This version needs a saved cover image before final approval.')
     if source.suffix.lower() not in ['.png', '.jpg', '.jpeg', '.webp']:
         raise ReviewError('This version needs a saved cover image before final approval.')
@@ -215,6 +215,15 @@ def promote_video(data, entry, project, artifact, event, changes, expected):
     if composition: entry['composition'] = (composition / 'index.html').relative_to(index.STUDIO).as_posix()
 
 
+def own_entry(project, entry):
+    """A library entry that names this project, or has no project and holds this project's own video."""
+    if entry.get('collection') != 'mine' or entry.get('archived_from'):
+        return False
+    if 'project_id' in entry:
+        return entry['project_id'] == project['id']
+    return str(entry.get('media_path', '')).startswith(catalog_path('projects', project['id']) + '/')
+
+
 def final_reference(project, artifact, event, changes, expected):
     from technique_upkeep import prepared
     plan = prepared(project, artifact, expected) if artifact['type'] == 'video' else None
@@ -236,8 +245,13 @@ def final_reference(project, artifact, event, changes, expected):
         seed = plan['reference'] if plan else project.get('reference_entry')
         if not isinstance(seed, dict) or not index.TOKEN.fullmatch(seed.get('id', '')):
             raise ReviewError('Ask your assistant to prepare this project’s library entry before marking it final.')
-        if any(e['id'] == seed['id'] for e in data['entries']):
+        entry = next((e for e in data['entries'] if e['id'] == seed['id']), None)
+        if entry is not None and not own_entry(project, entry):
             raise ReviewError('This library ID is already in use. Ask your assistant to reconcile it.')
+        if entry is not None:
+            # The assistant prepared this version for the project's own earlier entry, which was never linked.
+            project['reference_id'] = entry['id']
+    if entry is None:
         entry = copy.deepcopy(seed)
         entry.setdefault('created_at', event['at'])
         required = ['title', 'subtitle', 'creator', 'creator_id', 'summary', 'tags', 'palette', 'traits',
