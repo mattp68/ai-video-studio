@@ -18,6 +18,8 @@ The AI handles the editing work. Your local studio is where you review, refine, 
 
 The studio is free. The **Creator Kit** is the shortcut: 9 video lessons on my exact editing workflow, plus 51 of my original effects. One prompt installs the studio and every effect for you.
 
+[![The Creator Kit: the course, 9 video lessons, plus Creator Pack 1, 51 effects](IMAGE_URL_PENDING)](https://mattpaigeai.com/studio/kit)
+
 **[Get the Creator Kit →](https://mattpaigeai.com/studio/kit)**
 
 Rather set it up yourself? The free setup is right below.
