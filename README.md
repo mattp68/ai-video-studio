@@ -14,17 +14,13 @@ No video editing experience. No coding. No engineering degree required to get st
 
 The AI handles the editing work. Your local studio is where you review, refine, and manage everything.
 
-### 🎬 Want to see exactly how I use it?
+### 🎬 Want the easy button?
 
-I recorded an 11-minute, start-to-finish walkthrough showing how I turn raw footage into finished videos, including the little tricks I've learned to save hours of editing.
+The studio is free. The **Creator Kit** is the shortcut: 9 video lessons on my exact editing workflow, plus 51 of my original effects. One prompt installs the studio and every effect for you.
 
-**[Get the free setup guide + see the full walkthrough →](https://mattpaige68.substack.com/p/its-here-my-entire-ai-video-editing)**
+**[Get the Creator Kit →](https://mattpaigeai.com/studio/kit)**
 
-The entire studio and installation instructions are free. The walkthrough is an optional paid Substack benefit.
-
-Here is a teaser of the walkthrough video:
-
-https://github.com/user-attachments/assets/bc5030dc-d3f3-443a-a95b-c45130d863b6
+Rather set it up yourself? The free setup is right below.
 
 ## 🚀 Get started with one prompt
 
@@ -76,19 +72,20 @@ And there's plenty more you can do with it.
 
 Installing the studio is one thing. Knowing how to get incredible videos out of it is where the real magic happens.
 
-I've created a complete 11-minute video walkthrough and written guide showing my exact workflow.
+That's why I made the **Creator Kit**:
 
-How I use other creators' techniques, build storyboards, give feedback that actually works, and turn raw footage into finished videos.
+- **9 video lessons.** My exact process, start to finish: set up your studio, turn raw takes into a clean cut, storyboard the edit before it's built, direct changes with timestamped notes, and borrow techniques from any creator's video. Plus a bonus lesson on carousels.
+- **Creator Pack 1: 51 original effects.** Motion graphics, 3D video orbits, clones of yourself, giant text behind your head and more. Pick one, and your AI rebuilds it with your footage.
+- **One-prompt setup.** Your AI installs the studio and all 51 effects for you. Already set up? Your projects stay as they are.
+- **Every prompt, a written guide and troubleshooting**, plus an owners-only community chat and future course updates.
 
 All the stuff I figured out through trial and error, so you don't have to.
 
-The walkthrough is available to paid subscribers of my Substack, **AI for the Rest of Us**, for $5/month or $50/year.
+One payment, no subscription. If it doesn't help you make your first video, tell me within 7 days for a full refund.
 
-You also get access to my other in-depth AI tutorials, guides, and future workflows.
+**[Get the Creator Kit →](https://mattpaigeai.com/studio/kit)**
 
-**[Watch the full walkthrough + get the written guide →](https://mattpaige68.substack.com/p/its-here-my-entire-ai-video-editing)**
-
-The software is free either way. The walkthrough is just the shortcut to getting really freaking good at using it.
+The software is free either way. The Creator Kit is just the shortcut to getting really freaking good at using it.
 
 ## Documentation
 
