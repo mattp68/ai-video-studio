@@ -15,7 +15,7 @@
   },
   "dependencies": {
     "gsap": "3.14.2",
-    "hyperframes": "0.9.71"
+    "hyperframes": "0.9.79"
   },
   "license": "MIT",
   "overrides": {
